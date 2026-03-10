@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "based": {
+      "command": "node",
+      "args": [
+        "/data/based/api/dist/mcp-server.js"
+      ],
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}

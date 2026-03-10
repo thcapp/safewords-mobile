@@ -1,0 +1,4 @@
+scratch/
+*.log
+node_modules/
+.nfs*

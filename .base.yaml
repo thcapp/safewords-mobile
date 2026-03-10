@@ -1,0 +1,35 @@
+name: safewords-mobile
+type: code
+path: /data/code/safewords-mobile
+description: "Native mobile app for rotating TOTP-based family safewords (iOS & Android)"
+tags: [mobile, react-native, expo, totp, offline-first]
+realm: "thc"
+
+claude:
+  auto_start: true
+  flags: "--continue --dangerously-skip-permissions"
+
+tmux:
+  session_name: safewords-mobile
+
+hooks:
+  pre_session: []
+  post_session: []
+
+created: 2026-03-10
+
+code:
+  repo: "repos/safewords-app"
+  branch: "main"
+  language: "typescript"
+  framework: "expo"
+  runtime: "node"
+  build: "npx expo export"
+  dev: "npx expo start"
+  deploy:
+    target: "app-stores"
+    host: ""
+    command: "eas build"
+    url: ""
+    port: ""
+  status: "planning"
