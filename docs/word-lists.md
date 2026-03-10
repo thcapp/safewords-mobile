@@ -1,54 +1,49 @@
 # Word Lists Reference
 
-## Source
+## Frozen v1 Lists
 
-Word lists are defined in the safewords.io web app:
+Word lists are extracted from safewords.io and frozen in `shared/wordlists/`:
+
+| File | Count | Source |
+|------|-------|--------|
+| `shared/wordlists/adjectives.json` | **197** | `safewords-io/.../en/wordlists/adjectives.ts` |
+| `shared/wordlists/nouns.json` | **300** | `safewords-io/.../en/wordlists/nouns.ts` |
+
+Each platform embeds an identical copy:
+- **iOS**: `Safewords/Data/adjectives.json`, `nouns.json`
+- **Android**: `app/src/main/assets/wordlists/adjectives.json`, `nouns.json`
+
+## Original Source
+
 ```
 /data/code/safewords-io/repos/safewords-web/src/lib/data/en/wordlists/
-├── adjectives.ts   (~208 words)
-├── nouns.ts        (~315 words)
-└── verbs.ts        (~106 words)
+├── adjectives.ts   (197 words)
+├── nouns.ts        (300 words)
+└── verbs.ts        (106 words — not used in TOTP derivation)
 ```
 
-Re-exported via:
-```
-/data/code/safewords-io/repos/safewords-web/src/lib/data/wordlists/
-├── adjectives.ts   → re-exports from en/
-├── nouns.ts        → re-exports from en/
-└── verbs.ts        → re-exports from en/
-```
-
-## Format
-
-Each file exports a `string[]`:
-```typescript
-export const adjectives: string[] = [
-  "golden", "silver", "purple", "crimson", ...
-];
-```
+## Curation Criteria
 
 Words are curated to be:
-- Phone-safe (easy to say/hear clearly over a phone call)
-- Memorable (concrete, vivid, common vocabulary)
-- Unambiguous (no homophones or easily confused words)
-- Family-friendly (no offensive or scary words)
+- **Phone-safe** — easy to say/hear clearly over a phone call
+- **Memorable** — concrete, vivid, common vocabulary
+- **Unambiguous** — no homophones or easily confused words
+- **Family-friendly** — no offensive or scary words
 
 ## Combination Space
 
 For the "Adjective + Noun + Number" pattern:
-- ~208 adjectives × ~315 nouns × 100 numbers = **~6.5M combinations**
-- Entropy: ~22.6 bits (adjective+noun alone = ~16 bits; with number = ~22.6 bits)
+- 197 adjectives × 300 nouns × 100 numbers = **5,910,000 combinations**
+- Entropy: ~22.5 bits
 
-For stronger phrases ("Noun + Verb + Noun + Number"):
-- ~315 × ~106 × ~315 × 100 = **~1.05B combinations** (~30 bits)
-
-## Versioning Strategy
+## Versioning
 
 **CRITICAL**: Word lists are integral to the TOTP algorithm. If lists change, the same seed+time produces different words, breaking sync between devices.
 
-Options:
-1. **Freeze v1 lists in the app bundle** — simplest, most reliable
-2. **Version lists with group metadata** — group stores list version, app ships multiple versions
-3. **Hash the list** — store SHA256 of the combined list alongside the seed to detect mismatches
+**Strategy**: Freeze v1 lists in the app bundle. Both platforms embed identical JSON files. If lists ever need updating, treat it as a new algorithm version — existing groups continue using v1 lists, new groups can use v2.
 
-Recommendation: Option 1 for MVP. Embed a frozen copy. If lists ever need updating, treat it as a new "algorithm version" and handle migration.
+The single source of truth is `shared/wordlists/`. When lists need updating:
+1. Update JSON files in `shared/wordlists/`
+2. Copy to both `repos/safewords-ios/Safewords/Data/` and `repos/safewords-android/app/src/main/assets/wordlists/`
+3. Bump version in test vectors
+4. Run cross-platform tests

@@ -1,104 +1,131 @@
-# safewords-mobile
+# CLAUDE.md
 
-Native mobile app for rotating TOTP-based family safewords. iOS & Android via React Native / Expo.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Status: PLANNING** — No code exists yet. The first task is to produce a detailed technical plan before writing any code.
+## Project Overview
 
-## Product Context
+Native mobile apps for rotating TOTP-based family safewords. **Two native apps** — Swift/SwiftUI for iOS, Kotlin/Compose for Android. Companion to [safewords.io](https://safewords.io) — extends the web concept with **automatic rotation** using time-based cryptography.
 
-Companion app to [safewords.io](https://safewords.io) — a web app that helps families create verification safewords to defend against AI deepfake scams. The web app (static SvelteKit site) provides a one-time generator, protocol builder, drills, and educational content. This mobile app extends the concept with **automatic rotation** of safewords using time-based cryptography.
+**Status: IMPLEMENTATION** — Shared foundation complete, native apps in development.
 
-The marketing page describing the planned features is live at: https://safewords.io/app
-Source: `/data/code/safewords-io/repos/safewords-web/src/routes/app/+page.svelte`
+## Project Layout
 
-## Core Features (Planned)
+This is a **Based** managed project (`/data/code/safewords-mobile/`). Configuration in `.base.yaml`, realm: `thc`.
 
-### Phase 1 — MVP
-1. **TOTP-based rotating safewords** — Derive a human-readable word/phrase from a shared cryptographic seed + current time window. All devices with the same seed show the same word. Configurable rotation: hourly, daily, weekly, monthly.
-2. **Family groups** — Create a group, share the seed via QR code (in-person only). View members list. No accounts, no server, no cloud.
-3. **Home screen widget** — iOS WidgetKit / Android App Widget showing the current safeword and countdown to next rotation.
-4. **Offline-first** — Everything works without internet. Seed stored locally in secure storage (Keychain / Keystore).
+| Directory | Purpose |
+|-----------|---------|
+| `repos/safewords-ios/` | Swift/SwiftUI iOS app (Xcode project) |
+| `repos/safewords-android/` | Kotlin/Compose Android app (Gradle project) |
+| `shared/` | Cross-platform specs: word lists, test vectors, QR schema |
+| `docs/` | Feature specs, architecture docs — read these before implementing |
+| `queue/` | Pending work items (process in numeric order) |
+| `inbox/` | Drop zone for unprocessed input |
+| `output/` | Builds, artifacts |
+| `ops/` | Scripts, tools |
+| `state/` | Logs, memory, context |
 
-### Phase 2
-5. **SMS fallback** — For family members who won't install the app, send an automatic SMS with the current word when it rotates.
-6. **Push notifications** — Notify when a safeword rotates (optional).
+### Key Documentation
 
-### Phase 3
-7. **Challenge-response** — Rotating Q&A pairs derived from the seed. Emergency static override (single-use).
+- **Feature spec**: `docs/feature-spec.md` — full product requirements with all phases
+- **TOTP algorithm**: `docs/totp-word-algorithm.md` — core crypto algorithm spec (HMAC-SHA256 → word mapping)
+- **Test vectors**: `shared/test-vectors.json` — frozen seed+time→phrase pairs for cross-platform validation
+- **QR schema**: `shared/qr-schema.json` — QR payload format specification
+- **Word lists**: `shared/wordlists/` — 197 adjectives, 300 nouns (frozen v1, extracted from safewords-io)
 
-## Technical Direction
+### Related Codebases
 
-### Framework: React Native + Expo
-- **Expo SDK 53+** with Expo Router for navigation
-- **EAS Build** for app store builds
-- TypeScript throughout
-- Expo SecureStore for seed storage
-- expo-crypto for HMAC/SHA operations
-- expo-widgets (community) or native modules for home screen widgets
+- **safewords-io** (`/data/code/safewords-io/`) — Web app (SvelteKit)
+  - Word lists source: `repos/safewords-web/src/lib/data/en/wordlists/{adjectives,nouns}.ts`
+  - Mobile marketing page: `repos/safewords-web/src/routes/app/+page.svelte`
 
-### TOTP Word Derivation
-The core algorithm: `HMAC-SHA256(seed, floor(timestamp / interval))` → map output bytes to a word list → produce human-readable phrase (e.g., "Crimson Eagle 47"). Same algorithm on every device = same word at the same time. No server needed.
+## Commands
 
-### Data Model (Local Only)
-- **Group**: `{ id, name, seed (encrypted), interval, createdAt, members[] }`
-- **Member**: `{ id, name, role, joinedAt }`
-- **Seed**: 256-bit random, stored in platform secure storage, never transmitted digitally
-- **Settings**: `{ notificationsEnabled, smsEnabled, smsRecipients[] }`
+### iOS (from repos/safewords-ios/)
+```bash
+# Generate Xcode project (requires xcodegen)
+xcodegen generate
 
-### Key Constraints
-- **Zero network dependency** for core function (word derivation)
-- **No user accounts** — groups are purely local + QR-shared
-- **No backend server** — all computation is on-device
-- **Secure storage only** — seeds never touch AsyncStorage or plain files
-- **Minimal permissions** — camera (QR scan), SMS (Phase 2 only), notifications (Phase 2)
+# Build
+xcodebuild -scheme Safewords -destination 'platform=iOS Simulator,name=iPhone 15' build
 
-## Structure
+# Test
+xcodebuild -scheme Safewords -destination 'platform=iOS Simulator,name=iPhone 15' test
+
+# Open in Xcode
+open Safewords.xcodeproj
+```
+
+### Android (from repos/safewords-android/)
+```bash
+# Build debug APK
+./gradlew assembleDebug
+
+# Run unit tests
+./gradlew test
+
+# Install on connected device/emulator
+./gradlew installDebug
+```
+
+## Technical Stack
+
+### iOS
+- **Swift 5.9+** / **SwiftUI** with iOS 17+ deployment target
+- **CryptoKit** for HMAC-SHA256 (stdlib, zero dependencies)
+- **Keychain** via Security framework + App Group for widget access
+- **WidgetKit** for home screen widget
+- **AVFoundation** for QR scanning, **CoreImage** for QR generation
+
+### Android
+- **Kotlin 2.0+** / **Jetpack Compose** with API 26+ (Android 8) minimum
+- **javax.crypto.Mac** for HmacSHA256 (stdlib)
+- **EncryptedSharedPreferences** (AndroidX Security) for seed storage
+- **Jetpack Glance** for home screen widget
+- **CameraX + ML Kit** for QR scanning, **ZXing** for QR generation
+
+## Architecture Constraints
+
+- **Zero network dependency** for core function — TOTP word derivation is purely on-device
+- **No backend server, no user accounts** — groups are local + QR-shared seeds
+- **Deterministic cross-platform** — same seed + time = identical word on iOS and Android
+- **Word lists are frozen** — 197 adjectives, 300 nouns. Changing lists breaks sync. Embed v1 in app bundle.
+- **Secure storage only** — seeds in platform keychain/keystore, never plain storage
+- **Minimal permissions** — camera (QR scan only); SMS and notifications are Phase 2
+- **Shared test vectors** — `shared/test-vectors.json` is the cross-platform contract
+
+## TOTP Core Algorithm
 
 ```
-safewords-mobile/
-├── repos/safewords-app/    # Main Expo app (to be created)
-│   ├── app/                # Expo Router pages
-│   ├── src/
-│   │   ├── crypto/         # TOTP derivation, HMAC, seed generation
-│   │   ├── components/     # Shared UI components
-│   │   ├── stores/         # Zustand stores (groups, settings)
-│   │   ├── services/       # QR, SMS, notifications
-│   │   ├── widgets/        # Widget bridge code
-│   │   └── types/          # TypeScript interfaces
-│   ├── assets/             # Fonts, images
-│   └── package.json
-├── docs/                   # Feature specs, architecture docs
-├── inbox/                  # Drop zone for input
-├── ops/                    # Scripts, tools
-├── output/                 # Builds, artifacts
-├── queue/                  # Pending work items
-├── state/                  # Logs, memory, context
-└── templates/              # Reusable templates
+HMAC-SHA256(seed, floor(timestamp / interval)) → extract bytes → map to adjective + noun + number
+→ "Breezy Rocket 75"
 ```
+
+```
+offset = hash[31] & 0x0F
+adj_idx  = ((hash[offset] & 0x7F) << 8 | hash[offset+1]) % 197
+noun_idx = ((hash[offset+2] & 0x7F) << 8 | hash[offset+3]) % 300
+number   = ((hash[offset+4] & 0x7F) << 8 | hash[offset+5]) % 100
+```
+
+Full spec in `docs/totp-word-algorithm.md`. Both platforms validate against `shared/test-vectors.json`.
+
+## Design Language
+
+- Dark theme, teal accent (#0f766e / #2dd4bf), amber CTA (#d97706)
+- System fonts (SF Pro iOS, Roboto Android)
+- Match safewords.io/app marketing page mockups
 
 ## CLI Tools
 
-Use credential-injecting wrappers instead of raw CLI commands:
-- `gh` — aliased to `gh-wrap`, auto-switches GitHub account based on realm
+Use credential-injecting wrappers (auto-detect profile from realm `thc`):
+- `gh` — GitHub CLI (aliased to `gh-wrap`)
 - `aw` — Appwrite CLI wrapper (if needed later)
-- `wr` — Wrangler wrapper (not needed for this project)
-
-These wrappers auto-detect the correct profile from this base's realm (`thc`).
-
-## Related Bases
-
-- **safewords-io** (`/data/code/safewords-io/`) — The web app. Marketing page at `/app` describes the mobile features. Word lists in `repos/safewords-web/src/lib/data/` could be reused.
-
-## Flow
-
-```
-queue/ (input) → process → output/ (result)
-                    ↓
-               state/ (memory)
-```
+- Never use raw `appwrite` CLI directly
 
 ## Safety
 
-- Never commit seed values, API keys, or `.env` contents
+- Never commit seed values, `.env` contents, or API keys
 - Never hardcode cryptographic constants — derive from standard algorithms
-- The TOTP derivation must be deterministic and cross-platform (same seed + time = same word on iOS, Android, and potentially web)
+- TOTP derivation must be deterministic and cross-platform
+- Seed generation: `SecRandomCopyBytes` (iOS) / `SecureRandom` (Android)
+- Both apps' unit tests must pass all shared test vectors before any release

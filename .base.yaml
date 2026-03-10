@@ -1,8 +1,8 @@
 name: safewords-mobile
 type: code
 path: /data/code/safewords-mobile
-description: "Native mobile app for rotating TOTP-based family safewords (iOS & Android)"
-tags: [mobile, react-native, expo, totp, offline-first]
+description: "Native mobile apps for rotating TOTP-based family safewords (iOS Swift + Android Kotlin)"
+tags: [mobile, swift, kotlin, swiftui, compose, totp, offline-first]
 realm: "thc"
 
 claude:
@@ -19,17 +19,20 @@ hooks:
 created: 2026-03-10
 
 code:
-  repo: "repos/safewords-app"
-  branch: "main"
-  language: "typescript"
-  framework: "expo"
-  runtime: "node"
-  build: "npx expo export"
-  dev: "npx expo start"
+  repos:
+    ios:
+      path: "repos/safewords-ios"
+      language: "swift"
+      framework: "swiftui"
+      build: "xcodebuild -scheme Safewords build"
+      test: "xcodebuild -scheme Safewords test"
+    android:
+      path: "repos/safewords-android"
+      language: "kotlin"
+      framework: "compose"
+      build: "./gradlew assembleDebug"
+      test: "./gradlew test"
+  shared: "shared/"
   deploy:
     target: "app-stores"
-    host: ""
-    command: "eas build"
-    url: ""
-    port: ""
-  status: "planning"
+  status: "development"

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Safewords QR Payload v1",
+  "description": "JSON payload encoded as base64url in QR codes for sharing group seeds between devices",
+  "type": "object",
+  "required": ["v", "name", "seed", "interval"],
+  "properties": {
+    "v": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "Group display name"
+    },
+    "seed": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "256-bit seed, base64url-encoded (no padding), 43 characters"
+    },
+    "interval": {
+      "type": "string",
+      "enum": ["hourly", "daily", "weekly", "monthly"],
+      "description": "Rotation interval"
+    }
+  },
+  "additionalProperties": false
+}

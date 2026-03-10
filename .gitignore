@@ -2,3 +2,31 @@ scratch/
 *.log
 node_modules/
 .nfs*
+
+# Credentials and session state
+.auth/
+.handoff
+.memory/
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+build/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+xcuserdata/
+
+# Android
+.gradle/
+local.properties
+*.apk
+*.aab
+repos/safewords-android/.idea/
+
+# OS
+.DS_Store
+Thumbs.db
