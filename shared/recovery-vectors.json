@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "scheme": "bip39-english-entropy256",
+  "wordCount": 24,
+  "seedBytes": 32,
+  "normalization": "NFKD trim lowercase collapse-whitespace",
+  "valid": [
+    {
+      "id": "zero-256",
+      "seedHex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art"
+    },
+    {
+      "id": "ff-256",
+      "seedHex": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "mnemonic": "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo vote"
+    },
+    {
+      "id": "increment-00-1f",
+      "seedHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "mnemonic": "abandon amount liar amount expire adjust cage candy arch gather drum bullet absurd math era live bid rhythm alien crouch range attend journey unaware"
+    },
+    {
+      "id": "safewords-baseline",
+      "seedHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "mnemonic": "absurd avoid scissors anxiety gather lottery category door army half long cage bachelor another expect people blade school educate curtain scrub monitor lady beyond"
+    },
+    {
+      "id": "alternating-aa55",
+      "seedHex": "aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55",
+      "mnemonic": "prevent pull nice feed follow client power relief fiber famous hedgehog prize pipe steel find enjoy prevent pull nice feed follow client power punch"
+    },
+    {
+      "id": "pattern-deadbeef",
+      "seedHex": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "mnemonic": "team hospital room run swim jewel kingdom result used voice hurry text turn term satoshi stick same leave problem lava worth fine wing utility"
+    },
+    {
+      "id": "mixed-case-leading-spaces",
+      "seedHex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art",
+      "normalizedInput": "  ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ABANDON ART  "
+    }
+  ],
+  "invalid": [
+    {
+      "id": "empty-input",
+      "input": "",
+      "expectedError": "EMPTY_INPUT",
+      "expectedMessage": "Enter your 24-word recovery phrase."
+    },
+    {
+      "id": "wrong-word-count-12",
+      "input": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "expectedError": "WRONG_WORD_COUNT",
+      "expectedMessage": "Recovery phrase must be exactly 24 words."
+    },
+    {
+      "id": "unknown-word",
+      "input": "abandon amount liar amount expire xylophone cage candy arch gather drum bullet absurd math era live bid rhythm alien crouch range attend journey unaware",
+      "expectedError": "UNKNOWN_WORD",
+      "expectedWordIndex": 6,
+      "expectedUnknownWord": "xylophone",
+      "expectedMessage": "Word 6 is not in the recovery word list: \"xylophone\"."
+    },
+    {
+      "id": "bad-checksum",
+      "input": "abandon amount liar amount expire adjust cage candy arch gather drum bullet absurd math era live bid rhythm alien crouch range attend journey abandon",
+      "expectedError": "BAD_CHECKSUM",
+      "expectedMessage": "Recovery phrase checksum is invalid. Check the words and order."
+    },
+    {
+      "id": "punctuation-token",
+      "input": "abandon, amount liar amount expire adjust cage candy arch gather drum bullet absurd math era live bid rhythm alien crouch range attend journey unaware",
+      "expectedError": "UNKNOWN_WORD",
+      "expectedWordIndex": 1,
+      "expectedUnknownWord": "abandon,",
+      "expectedMessage": "Word 1 is not in the recovery word list: \"abandon,\"."
+    }
+  ]
+}
