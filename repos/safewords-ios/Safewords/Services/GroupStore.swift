@@ -23,7 +23,7 @@ final class GroupStore {
     /// The currently selected group.
     var selectedGroup: Group? {
         if let id = selectedGroupID {
-            return groups.first { $0.id == id }
+            return groups.first { $0.id == id } ?? groups.first
         }
         return groups.first
     }
@@ -33,6 +33,7 @@ final class GroupStore {
     private enum Keys {
         static let groups = "safewords.groups"
         static let selectedGroup = "safewords.selectedGroupID"
+        static let emergencyOverridePrefix = "safewords.emergencyOverride."
     }
 
     init() {
@@ -45,37 +46,40 @@ final class GroupStore {
 
     /// Create a new group with a fresh random seed.
     @discardableResult
-    func createGroup(name: String, interval: RotationInterval = .daily, creatorName: String) -> Group {
-        let seed = TOTPDerivation.generateSeed()
+    func createGroup(
+        name: String,
+        interval: RotationInterval = .daily,
+        creatorName: String,
+        seed providedSeed: Data? = nil
+    ) -> Group? {
+        let seed = providedSeed ?? TOTPDerivation.generateSeed()
         let creator = Member(name: creatorName, role: .creator)
         let group = Group(name: name, interval: interval, members: [creator])
 
-        KeychainService.saveSeed(seed, forGroup: group.id)
+        guard KeychainService.saveSeed(seed, forGroup: group.id) else {
+            return nil
+        }
         groups.append(group)
         groups.sort { $0.createdAt < $1.createdAt }
         saveGroups()
-
-        if selectedGroupID == nil {
-            selectedGroupID = group.id
-        }
+        selectedGroupID = group.id
 
         return group
     }
 
     /// Create a group from a scanned QR code (joining an existing group).
     @discardableResult
-    func joinGroup(name: String, seed: Data, interval: RotationInterval, memberName: String) -> Group {
+    func joinGroup(name: String, seed: Data, interval: RotationInterval, memberName: String) -> Group? {
         let member = Member(name: memberName, role: .member)
         let group = Group(name: name, interval: interval, members: [member])
 
-        KeychainService.saveSeed(seed, forGroup: group.id)
+        guard KeychainService.saveSeed(seed, forGroup: group.id) else {
+            return nil
+        }
         groups.append(group)
         groups.sort { $0.createdAt < $1.createdAt }
         saveGroups()
-
-        if selectedGroupID == nil {
-            selectedGroupID = group.id
-        }
+        selectedGroupID = group.id
 
         return group
     }
@@ -112,11 +116,40 @@ final class GroupStore {
     func deleteGroup(_ groupID: UUID) {
         KeychainService.deleteSeed(forGroup: groupID)
         groups.removeAll { $0.id == groupID }
+        defaults?.removeObject(forKey: Keys.emergencyOverridePrefix + groupID.uuidString)
         saveGroups()
 
         if selectedGroupID == groupID {
             selectedGroupID = groups.first?.id
         }
+    }
+
+    /// Store or clear a per-group fallback word for emergency verification.
+    func setEmergencyOverrideWord(groupID: UUID, word: String?) {
+        let key = Keys.emergencyOverridePrefix + groupID.uuidString
+        let trimmed = word?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let trimmed, !trimmed.isEmpty {
+            defaults?.set(trimmed, forKey: key)
+        } else {
+            defaults?.removeObject(forKey: key)
+        }
+    }
+
+    /// Return a per-group fallback word, if one has been configured.
+    func emergencyOverrideWord(groupID: UUID) -> String? {
+        defaults?.string(forKey: Keys.emergencyOverridePrefix + groupID.uuidString)
+    }
+
+    /// Delete all local group metadata, seeds, and per-group fallback words.
+    func resetAllData() {
+        for id in groups.map(\.id) {
+            KeychainService.deleteSeed(forGroup: id)
+            defaults?.removeObject(forKey: Keys.emergencyOverridePrefix + id.uuidString)
+        }
+        groups.removeAll()
+        saveGroups()
+        selectedGroupID = nil
+        KeychainService.deleteAllSeeds()
     }
 
     // MARK: - Safeword Derivation

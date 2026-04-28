@@ -1,6 +1,7 @@
 import WidgetKit
 import SwiftUI
 import CryptoKit
+import Security
 
 // MARK: - Widget-local RotationInterval (mirrors main app, needed for decoding)
 
@@ -75,30 +76,38 @@ struct SafewordsTimelineProvider: TimelineProvider {
         var entries: [SafewordsEntry] = []
         let now = Date()
         let interval = group.interval.seconds
+        let prefs = widgetPrefs()
+        let currentCounter = Int64(floor(now.timeIntervalSince1970 / Double(interval)))
 
         // Generate entries for the current period and the next few periods
         for i in 0..<5 {
-            let timestamp = now.timeIntervalSince1970 + Double(i * interval)
-            let counter = Int64(floor(timestamp / Double(interval)))
-            let periodStart = Date(timeIntervalSince1970: Double(counter) * Double(interval))
+            let counter = currentCounter + Int64(i)
+            let entryDate: Date
+            if i == 0 {
+                entryDate = now
+            } else {
+                entryDate = Date(timeIntervalSince1970: Double(counter) * Double(interval))
+            }
 
             let phrase = WidgetTOTP.deriveSafewordCapitalized(
                 seed: seed,
                 interval: interval,
-                timestamp: periodStart.timeIntervalSince1970
+                timestamp: entryDate.timeIntervalSince1970
             )
 
             let remaining = WidgetTOTP.getTimeRemaining(
                 interval: interval,
-                timestamp: periodStart.timeIntervalSince1970
+                timestamp: entryDate.timeIntervalSince1970
             )
 
             let entry = SafewordsEntry(
-                date: periodStart,
+                date: entryDate,
                 groupName: group.name,
                 phrase: phrase,
                 timeRemaining: remaining,
-                intervalSeconds: interval
+                intervalSeconds: interval,
+                isHidden: prefs.hideWord,
+                widgetEnabled: prefs.enabled
             )
             entries.append(entry)
         }
@@ -115,6 +124,7 @@ struct SafewordsTimelineProvider: TimelineProvider {
         guard let (group, seed) = loadDefaultGroup() else { return nil }
         let now = Date()
         let timestamp = now.timeIntervalSince1970
+        let prefs = widgetPrefs()
         let phrase = WidgetTOTP.deriveSafewordCapitalized(
             seed: seed,
             interval: group.interval.seconds,
@@ -129,12 +139,21 @@ struct SafewordsTimelineProvider: TimelineProvider {
             groupName: group.name,
             phrase: phrase,
             timeRemaining: remaining,
-            intervalSeconds: group.interval.seconds
+            intervalSeconds: group.interval.seconds,
+            isHidden: prefs.hideWord,
+            widgetEnabled: prefs.enabled
         )
     }
 
+    private func widgetPrefs() -> (enabled: Bool, hideWord: Bool) {
+        let defaults = UserDefaults(suiteName: "group.app.thc.safewords")
+        let enabled = defaults?.object(forKey: "lockScreenGlance") as? Bool ?? true
+        let hideWord = defaults?.object(forKey: "hideWordUntilUnlock") as? Bool ?? false
+        return (enabled, hideWord)
+    }
+
     private func loadDefaultGroup() -> (WidgetGroup, Data)? {
-        let defaults = UserDefaults(suiteName: "group.com.thc.safewords")
+        let defaults = UserDefaults(suiteName: "group.app.thc.safewords")
 
         guard let groupsData = defaults?.data(forKey: "safewords.groups") else { return nil }
 
@@ -166,6 +185,8 @@ struct SafewordsEntry: TimelineEntry {
     let phrase: String
     let timeRemaining: TimeInterval
     let intervalSeconds: Int
+    var isHidden: Bool = false
+    var widgetEnabled: Bool = true
 }
 
 // MARK: - Widget Views
@@ -175,9 +196,9 @@ struct SafewordsWidgetSmallView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text(entry.phrase)
+            Text(displayPhrase)
                 .font(.subheadline.bold())
-                .foregroundStyle(Color(hex: "#2dd4bf"))
+                .foregroundStyle(Color(hex: "#E8553A"))
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.7)
                 .lineLimit(2)
@@ -192,8 +213,14 @@ struct SafewordsWidgetSmallView: View {
         }
         .padding()
         .containerBackground(for: .widget) {
-            Color(hex: "#0a0a0a")
+            Color(hex: "#0B0B0C")
         }
+    }
+
+    private var displayPhrase: String {
+        if !entry.widgetEnabled { return "Widget Off" }
+        if entry.isHidden { return "Unlock to View" }
+        return entry.phrase
     }
 }
 
@@ -211,9 +238,9 @@ struct SafewordsWidgetMediumView: View {
                         .tracking(1)
                 }
 
-                Text(entry.phrase)
+                Text(displayPhrase)
                     .font(.title3.bold())
-                    .foregroundStyle(Color(hex: "#2dd4bf"))
+                    .foregroundStyle(Color(hex: "#E8553A"))
                     .minimumScaleFactor(0.7)
                     .lineLimit(2)
             }
@@ -223,10 +250,10 @@ struct SafewordsWidgetMediumView: View {
             VStack(spacing: 4) {
                 ZStack {
                     Circle()
-                        .stroke(Color(hex: "#0f766e").opacity(0.3), lineWidth: 4)
+                        .stroke(Color(hex: "#F5F2EC").opacity(0.3), lineWidth: 4)
                     Circle()
                         .trim(from: 0, to: CGFloat(1.0 - entry.timeRemaining / Double(entry.intervalSeconds)))
-                        .stroke(Color(hex: "#2dd4bf"), style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .stroke(Color(hex: "#E8553A"), style: StrokeStyle(lineWidth: 4, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                 }
                 .frame(width: 44, height: 44)
@@ -238,8 +265,14 @@ struct SafewordsWidgetMediumView: View {
         }
         .padding()
         .containerBackground(for: .widget) {
-            Color(hex: "#0a0a0a")
+            Color(hex: "#0B0B0C")
         }
+    }
+
+    private var displayPhrase: String {
+        if !entry.widgetEnabled { return "Widget Off" }
+        if entry.isHidden { return "Unlock to View" }
+        return entry.phrase
     }
 }
 
@@ -332,18 +365,27 @@ enum WidgetTOTP {
 // MARK: - Widget-local Keychain access
 
 enum WidgetKeychain {
-    private static let service = "com.thc.safewords.seeds"
-    private static let appGroupID = "group.com.thc.safewords"
+    private static let service = "app.thc.safewords.seeds"
+    private static let appGroupID = "group.app.thc.safewords"
+    private static var accessGroup: String? {
+        guard let prefix = Bundle.main.object(forInfoDictionaryKey: "AppIdentifierPrefix") as? String,
+              !prefix.isEmpty else {
+            return nil
+        }
+        return "\(prefix)\(appGroupID)"
+    }
 
     static func getSeed(forGroup groupID: UUID) -> Data? {
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: groupID.uuidString,
-            kSecAttrAccessGroup as String: appGroupID,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
+        if let accessGroup {
+            query[kSecAttrAccessGroup as String] = accessGroup
+        }
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         guard status == errSecSuccess, let data = result as? Data else { return nil }

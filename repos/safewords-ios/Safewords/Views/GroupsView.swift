@@ -2,228 +2,208 @@ import SwiftUI
 
 struct GroupsView: View {
     @Environment(GroupStore.self) private var groupStore
-    @State private var showCreateGroup = false
-    @State private var showJoinGroup = false
-    @State private var newGroupName = ""
-    @State private var newCreatorName = ""
+    @Binding var screen: AppScreen
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.darkBackground.ignoresSafeArea()
+        ZStack {
+            Ink.bg.ignoresSafeArea()
 
-                if groupStore.groups.isEmpty {
-                    emptyGroupsList
-                } else {
-                    groupsList
-                }
-            }
-            .navigationTitle("Groups")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button(action: { showCreateGroup = true }) {
-                            Label("Create Group", systemImage: "plus.circle")
+            ScrollView {
+                VStack(spacing: 0) {
+                    header.padding(.horizontal, 20).padding(.top, 62)
+
+                    VStack(spacing: 10) {
+                        ForEach(Array(groupStore.groups.enumerated()), id: \.element.id) { idx, group in
+                            groupCard(group, active: group.id == groupStore.selectedGroupID, idx: idx)
                         }
-                        Button(action: { showJoinGroup = true }) {
-                            Label("Join Group", systemImage: "qrcode.viewfinder")
+
+                        if let active = groupStore.selectedGroup {
+                            HStack {
+                                SectionLabel(text: "Members · \(active.name)")
+                                Spacer()
+                            }
+                            .padding(.horizontal, 4)
+                            .padding(.top, 20)
+
+                            VStack(spacing: 0) {
+                                ForEach(Array(active.members.enumerated()), id: \.element.id) { i, member in
+                                    memberRow(member: member, isFirst: i == 0)
+                                }
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Ink.bgElev)
+                                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(Ink.rule, lineWidth: 0.5))
+                            )
+
+                            Button { screen = .addMember } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "qrcode")
+                                        .font(.system(size: 15, weight: .medium))
+                                    Text("Invite someone to \(active.name)")
+                                        .font(Fonts.body(14, weight: .semibold))
+                                    Spacer()
+                                    Image(systemName: "arrow.right")
+                                        .font(.system(size: 12, weight: .medium))
+                                }
+                                .foregroundStyle(Ink.accent)
+                                .padding(16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .fill(Ink.tickFill)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.top, 12)
                         }
-                    } label: {
-                        Image(systemName: "plus")
-                            .foregroundStyle(Color.tealAccent)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 24)
+                    .padding(.bottom, 140)
                 }
             }
-            .sheet(isPresented: $showCreateGroup) {
-                createGroupSheet
-            }
-            .sheet(isPresented: $showJoinGroup) {
-                QRScannerView()
-            }
+            .scrollIndicators(.hidden)
         }
     }
 
-    // MARK: - Groups List
-
-    private var groupsList: some View {
-        List {
-            ForEach(groupStore.groups) { group in
-                NavigationLink(destination: GroupDetailView(group: group)) {
-                    groupRow(group)
-                }
-                .listRowBackground(Color.cardBackground)
+    private var header: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 6) {
+                SectionLabel(text: "Groups")
+                Text("Your circles")
+                    .font(Fonts.display(34))
+                    .tracking(-1.1)
+                    .foregroundStyle(Ink.fg)
             }
-            .onDelete(perform: deleteGroups)
+            Spacer()
+            Button { screen = .onboarding } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Ink.fg)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        Circle().fill(Ink.bgElev)
+                            .overlay(Circle().stroke(Ink.rule, lineWidth: 0.5))
+                    )
+            }
+            .buttonStyle(.plain)
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
     }
 
-    private func groupRow(_ group: Group) -> some View {
-        TimelineView(.periodic(from: .now, by: 1.0)) { context in
-            let timestamp = context.date.timeIntervalSince1970
-            let remaining = TOTPDerivation.getTimeRemaining(interval: group.interval.seconds, timestamp: timestamp)
-
-            HStack(spacing: 16) {
-                // Group icon
-                ZStack {
-                    Circle()
-                        .fill(Color.tealDark.opacity(0.3))
-                        .frame(width: 44, height: 44)
-                    Image(systemName: "shield.fill")
-                        .foregroundStyle(Color.tealAccent)
-                }
-
+    private func groupCard(_ group: Group, active: Bool, idx: Int) -> some View {
+        Button {
+            groupStore.selectedGroupID = group.id
+            screen = .home
+        } label: {
+            HStack(alignment: .center, spacing: 14) {
+                GroupDot(
+                    initial: String(group.name.prefix(1)),
+                    color: DotPalette.forIndex(idx),
+                    size: 44
+                )
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(group.name)
-                        .font(.headline)
-
-                    if let seed = groupStore.seed(for: group.id) {
-                        let phrase = TOTPDerivation.deriveSafewordCapitalized(
-                            seed: seed,
-                            interval: group.interval.seconds,
-                            timestamp: timestamp
-                        )
-                        Text(phrase)
-                            .font(.subheadline)
-                            .foregroundStyle(Color.tealAccent)
+                    HStack(spacing: 8) {
+                        Text(group.name)
+                            .font(Fonts.body(16, weight: .semibold))
+                            .tracking(-0.2)
+                            .foregroundStyle(Ink.fg)
+                        if active {
+                            Text("ACTIVE")
+                                .font(Fonts.body(10, weight: .semibold))
+                                .tracking(0.5)
+                                .foregroundStyle(Ink.accent)
+                                .padding(.horizontal, 7).padding(.vertical, 2)
+                                .background(RoundedRectangle(cornerRadius: 6).fill(Ink.tickFill))
+                        }
                     }
-                }
+                    HStack(spacing: 10) {
+                        Text("\(group.members.count) members")
+                            .font(Fonts.body(12.5)).foregroundStyle(Ink.fgMuted)
+                        Text("·").foregroundStyle(Ink.fgFaint)
+                        Text("rotates \(intervalLabel(group.interval))")
+                            .font(Fonts.body(12.5)).foregroundStyle(Ink.fgMuted)
+                    }
+                    .lineLimit(1)
 
+                    Text(groupStore.currentSafeword(for: group) ?? "—")
+                        .font(Fonts.mono(12.5))
+                        .tracking(0.3)
+                        .foregroundStyle(active ? Ink.accent : Ink.fg.opacity(0.7))
+                        .padding(.top, 4)
+                }
+                Spacer(minLength: 0)
+
+                Text("SEQ \(sequenceString(for: group))")
+                    .font(Fonts.mono(10))
+                    .tracking(1)
+                    .foregroundStyle(Ink.fgFaint)
+                    .rotationEffect(.degrees(-90))
+                    .fixedSize()
+                    .frame(width: 14)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Ink.bgElev)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(active ? Ink.accent : Ink.rule, lineWidth: 0.5)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func memberRow(member: Member, isFirst: Bool) -> some View {
+        VStack(spacing: 0) {
+            if !isFirst {
+                Rectangle().fill(Ink.rule).frame(height: 0.5).padding(.leading, 60)
+            }
+            HStack(spacing: 12) {
+                GroupDot(initial: String(member.name.prefix(1)), color: DotPalette.forIndex(member.colorIndex), size: 32)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(member.name)
+                        .font(Fonts.body(14.5, weight: .medium))
+                        .foregroundStyle(Ink.fg)
+                    Text(deviceLabel(for: member))
+                        .font(Fonts.body(11.5))
+                        .foregroundStyle(Ink.fgMuted)
+                }
                 Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(group.interval.shortLabel)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-
-                    Text(formatCompactTime(remaining))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
+                statusTag(for: member)
             }
-            .padding(.vertical, 4)
+            .padding(.horizontal, 16).padding(.vertical, 14)
         }
     }
 
-    // MARK: - Empty State
-
-    private var emptyGroupsList: some View {
-        VStack(spacing: 24) {
-            Spacer()
-
-            Image(systemName: "person.3")
-                .font(.system(size: 48))
-                .foregroundStyle(Color.tealAccent.opacity(0.5))
-
-            Text("No groups yet")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: 16) {
-                Button(action: { showCreateGroup = true }) {
-                    Label("Create", systemImage: "plus.circle.fill")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(Color.amberCTA)
-                        .clipShape(Capsule())
-                }
-
-                Button(action: { showJoinGroup = true }) {
-                    Label("Join", systemImage: "qrcode.viewfinder")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(Color.tealAccent)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(Color.tealDark.opacity(0.3))
-                        .clipShape(Capsule())
-                }
-            }
-
-            Spacer()
+    private func statusTag(for member: Member) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(Ink.ok).frame(width: 6, height: 6)
+            Text("SYNCED")
+                .font(Fonts.body(11.5, weight: .medium))
+                .tracking(0.3)
+                .foregroundStyle(Ink.ok)
         }
     }
 
-    // MARK: - Create Group Sheet
-
-    private var createGroupSheet: some View {
-        NavigationStack {
-            ZStack {
-                Color.darkBackground.ignoresSafeArea()
-
-                VStack(spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Group Name")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        TextField("Family Name", text: $newGroupName)
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Your Name")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        TextField("Your display name", text: $newCreatorName)
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    Spacer()
-                }
-                .padding()
-            }
-            .navigationTitle("Create Group")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        showCreateGroup = false
-                        newGroupName = ""
-                        newCreatorName = ""
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
-                        groupStore.createGroup(
-                            name: newGroupName,
-                            creatorName: newCreatorName
-                        )
-                        showCreateGroup = false
-                        newGroupName = ""
-                        newCreatorName = ""
-                    }
-                    .disabled(newGroupName.isEmpty || newCreatorName.isEmpty)
-                    .tint(Color.amberCTA)
-                }
-            }
-        }
-        .presentationDetents([.medium])
-    }
-
-    // MARK: - Actions
-
-    private func deleteGroups(at offsets: IndexSet) {
-        for index in offsets {
-            groupStore.deleteGroup(groupStore.groups[index].id)
+    private func deviceLabel(for member: Member) -> String {
+        switch member.role {
+        case .creator: return "iPhone · Last seen just now"
+        case .member:  return "Last seen 4m ago"
         }
     }
 
-    private func formatCompactTime(_ seconds: TimeInterval) -> String {
-        let totalSeconds = Int(seconds)
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let secs = totalSeconds % 60
-
-        if hours > 0 {
-            return String(format: "%dh %02dm", hours, minutes)
+    private func intervalLabel(_ i: RotationInterval) -> String {
+        switch i {
+        case .hourly: return "1 hour"
+        case .daily: return "1 day"
+        case .weekly: return "1 week"
+        case .monthly: return "1 month"
         }
-        return String(format: "%d:%02d", minutes, secs)
     }
-}
 
-#Preview {
-    GroupsView()
-        .environment(GroupStore())
+    private func sequenceString(for group: Group) -> String {
+        let counter = Int(Date().timeIntervalSince1970) / group.interval.seconds
+        return String(counter % 10_000)
+    }
 }

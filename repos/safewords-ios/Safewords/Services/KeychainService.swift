@@ -6,10 +6,19 @@ import Security
 enum KeychainService {
 
     /// App Group identifier shared between the main app and widget extension.
-    static let appGroupID = "group.com.thc.safewords"
+    static let appGroupID = "group.app.thc.safewords"
+
+    /// Keychain sharing requires the Team/App Identifier prefix, unlike App Group UserDefaults.
+    static var keychainAccessGroup: String? {
+        guard let prefix = Bundle.main.object(forInfoDictionaryKey: "AppIdentifierPrefix") as? String,
+              !prefix.isEmpty else {
+            return nil
+        }
+        return "\(prefix)\(appGroupID)"
+    }
 
     /// Service identifier for Keychain items.
-    private static let service = "com.thc.safewords.seeds"
+    private static let service = "app.thc.safewords.seeds"
 
     // MARK: - CRUD
 
@@ -19,14 +28,14 @@ enum KeychainService {
         // Delete any existing entry first
         deleteSeed(forGroup: groupID)
 
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: groupID.uuidString,
-            kSecAttrAccessGroup as String: appGroupID,
             kSecValueData as String: seed,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
+        addAccessGroupIfAvailable(to: &query)
 
         let status = SecItemAdd(query as CFDictionary, nil)
         return status == errSecSuccess
@@ -34,14 +43,14 @@ enum KeychainService {
 
     /// Retrieve the seed for a group.
     static func getSeed(forGroup groupID: UUID) -> Data? {
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: groupID.uuidString,
-            kSecAttrAccessGroup as String: appGroupID,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
+        addAccessGroupIfAvailable(to: &query)
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -55,12 +64,12 @@ enum KeychainService {
     /// Delete the seed for a group.
     @discardableResult
     static func deleteSeed(forGroup groupID: UUID) -> Bool {
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: groupID.uuidString,
-            kSecAttrAccessGroup as String: appGroupID
+            kSecAttrAccount as String: groupID.uuidString
         ]
+        addAccessGroupIfAvailable(to: &query)
 
         let status = SecItemDelete(query as CFDictionary)
         return status == errSecSuccess || status == errSecItemNotFound
@@ -69,13 +78,19 @@ enum KeychainService {
     /// Delete all seeds (used when clearing all app data).
     @discardableResult
     static func deleteAllSeeds() -> Bool {
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccessGroup as String: appGroupID
+            kSecAttrService as String: service
         ]
+        addAccessGroupIfAvailable(to: &query)
 
         let status = SecItemDelete(query as CFDictionary)
         return status == errSecSuccess || status == errSecItemNotFound
+    }
+
+    private static func addAccessGroupIfAvailable(to query: inout [String: Any]) {
+        if let accessGroup = keychainAccessGroup {
+            query[kSecAttrAccessGroup as String] = accessGroup
+        }
     }
 }

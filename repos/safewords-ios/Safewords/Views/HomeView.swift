@@ -2,223 +2,204 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(GroupStore.self) private var groupStore
-    @State private var showCreateGroup = false
-    @State private var newGroupName = ""
-    @State private var newCreatorName = ""
+    @Binding var screen: AppScreen
+    @AppStorage("revealStyle") private var revealStyle: String = "always"
+    @AppStorage("previewNextWord") private var previewNextWord: Bool = false
+    @State private var held = false
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.darkBackground.ignoresSafeArea()
+        ZStack {
+            Ink.bg.ignoresSafeArea()
 
-                if let group = groupStore.selectedGroup {
-                    groupContent(group)
-                } else {
-                    emptyState
+            if let group = groupStore.selectedGroup {
+                TimelineView(.periodic(from: .now, by: 1.0)) { ctx in
+                    let ts = ctx.date.timeIntervalSince1970
+                    let remaining = TOTPDerivation.getTimeRemaining(interval: group.interval.seconds, timestamp: ts)
+                    let total = Double(group.interval.seconds)
+                    let progress = 1.0 - remaining / total
+                    content(group: group, progress: progress, remaining: remaining, timestamp: ts)
                 }
-            }
-            .navigationTitle("Safewords")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if groupStore.groups.count > 1 {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        groupPicker
-                    }
-                }
-            }
-            .sheet(isPresented: $showCreateGroup) {
-                createGroupSheet
+            } else {
+                emptyState
             }
         }
     }
 
-    // MARK: - Group Content
+    private func content(group: Group, progress: Double, remaining: TimeInterval, timestamp: TimeInterval) -> some View {
+        let phrase = groupStore.safeword(for: group, at: timestamp) ?? "—"
+        let words = phrase.split(separator: " ").map(String.init)
 
-    private func groupContent(_ group: Group) -> some View {
-        VStack(spacing: 32) {
-            Spacer()
+        return ZStack(alignment: .top) {
+            // Top bar: group pill + bell
+            HStack {
+                Button {
+                    screen = .groups
+                } label: {
+                    HStack(spacing: 8) {
+                        GroupDot(initial: String(group.name.prefix(1)), color: groupColor(for: group), size: 24)
+                        Text(group.name)
+                            .font(Fonts.body(13, weight: .medium))
+                            .foregroundStyle(Ink.fg)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(Ink.fgMuted)
+                    }
+                    .padding(.leading, 7)
+                    .padding(.trailing, 12)
+                    .padding(.vertical, 7)
+                    .background(
+                        Capsule().fill(Ink.bgElev)
+                            .overlay(Capsule().stroke(Ink.rule, lineWidth: 0.5))
+                    )
+                }
+                .buttonStyle(.plain)
 
-            // Group name
-            Text(group.name)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(2)
+                Spacer()
 
-            // Countdown ring with safeword
-            TimelineView(.periodic(from: .now, by: 1.0)) { context in
-                let timestamp = context.date.timeIntervalSince1970
-                let remaining = TOTPDerivation.getTimeRemaining(interval: group.interval.seconds, timestamp: timestamp)
-                let progress = 1.0 - (remaining / Double(group.interval.seconds))
+                Button { screen = .settings } label: {
+                    Image(systemName: "bell")
+                        .font(.system(size: 17))
+                        .foregroundStyle(Ink.fg)
+                        .frame(width: 38, height: 38)
+                        .background(
+                            Circle().fill(Ink.bgElev)
+                                .overlay(Circle().stroke(Ink.rule, lineWidth: 0.5))
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 6)
 
-                VStack(spacing: 24) {
-                    CountdownRing(progress: progress, interval: group.interval) {
-                        VStack(spacing: 8) {
-                            if let seed = groupStore.seed(for: group.id) {
-                                let phrase = TOTPDerivation.deriveSafewordCapitalized(
-                                    seed: seed,
-                                    interval: group.interval.seconds,
-                                    timestamp: timestamp
-                                )
-                                SafewordDisplay(phrase: phrase)
-                            } else {
-                                Text("No seed")
-                                    .foregroundStyle(.secondary)
+            // Hero
+            VStack(spacing: 28) {
+                CountdownRing(progress: progress) {
+                    VStack(spacing: 14) {
+                        HStack(spacing: 6) {
+                            Circle().fill(Ink.accent).frame(width: 6, height: 6)
+                            SectionLabel(
+                                text: "LIVE · \(group.name.uppercased())",
+                                color: Ink.accent
+                            )
+                        }
+
+                        VStack(spacing: 0) {
+                            ForEach(Array(words.enumerated()), id: \.offset) { _, word in
+                                Text(word)
+                                    .font(Fonts.display(46, weight: .regular))
+                                    .tracking(-1.5)
+                                    .foregroundStyle(Ink.fg)
                             }
                         }
-                    }
-                    .frame(width: 280, height: 280)
+                        .blur(radius: shouldBlur ? 14 : 0)
+                        .animation(.easeInOut(duration: 0.18), value: held)
+                        .gesture(holdGesture)
 
-                    // Countdown text
-                    Text("Rotates in \(formatTimeRemaining(remaining))")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        Text("SEQ · \(sequenceString(for: group, at: timestamp))")
+                            .font(Fonts.mono(11))
+                            .tracking(1.5)
+                            .foregroundStyle(Ink.fgFaint)
+                            .padding(.top, 4)
+                    }
+                    .padding(.horizontal, 24)
+                }
+                .frame(width: 340, height: 340)
+                .overlay(alignment: .bottom) {
+                    if revealStyle == "holdReveal" && !held {
+                        Text("Hold to reveal")
+                            .font(Fonts.body(13))
+                            .foregroundStyle(Ink.fgMuted)
+                            .offset(y: -60)
+                    }
+                }
+
+                VStack(spacing: 8) {
+                    Text(countdownString(remaining: remaining))
+                        .font(Fonts.mono(28))
+                        .tracking(2)
+                        .foregroundStyle(Ink.fg)
                         .monospacedDigit()
+
+                    let rem = Int(remaining)
+                    let h = rem / 3600
+                    let m = (rem % 3600) / 60
+                    let s = rem % 60
+                    Text(secondaryCountdownText(group: group, timestamp: timestamp, hours: h, minutes: m, seconds: s))
+                        .font(Fonts.body(12))
+                        .foregroundStyle(Ink.fgMuted)
                 }
             }
-
-            // Interval badge
-            Text(group.interval.displayName)
-                .font(.caption)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.tealDark.opacity(0.3))
-                .foregroundStyle(Color.tealAccent)
-                .clipShape(Capsule())
-
-            Spacer()
-            Spacer()
+            .padding(.top, 60)
+            .frame(maxWidth: .infinity)
         }
-        .padding()
+        .foregroundStyle(Ink.fg)
     }
 
-    // MARK: - Empty State
+    // Hold gesture for hold-to-reveal style.
+    private var holdGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in if revealStyle == "holdReveal" { held = true } }
+            .onEnded { _ in held = false }
+    }
+
+    private var shouldBlur: Bool { revealStyle == "holdReveal" && !held }
 
     private var emptyState: some View {
         VStack(spacing: 24) {
-            Spacer()
-
-            Image(systemName: "shield.lefthalf.filled")
-                .font(.system(size: 64))
-                .foregroundStyle(Color.tealAccent)
-
-            Text("No Groups Yet")
-                .font(.title2.bold())
-                .foregroundStyle(.primary)
-
-            Text("Create a family group to start\nsharing rotating safewords.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            Image(systemName: "shield")
+                .font(.system(size: 48, weight: .light))
+                .foregroundStyle(Ink.accent)
+            Text("No groups yet")
+                .font(Fonts.display(28))
+                .foregroundStyle(Ink.fg)
+            Text("Create your first group to start\nsharing rotating safewords.")
+                .font(Fonts.body(15))
+                .foregroundStyle(Ink.fgMuted)
                 .multilineTextAlignment(.center)
-
-            Button(action: { showCreateGroup = true }) {
-                Label("Create Group", systemImage: "plus.circle.fill")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 14)
-                    .background(Color.amberCTA)
-                    .clipShape(Capsule())
-            }
-
-            Spacer()
+            Button("Create a group") { screen = .onboarding }
+                .font(Fonts.body(15, weight: .semibold))
+                .foregroundStyle(Ink.accentInk)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 14)
+                .background(Capsule().fill(Ink.accent))
         }
     }
 
-    // MARK: - Group Picker
-
-    @ViewBuilder
-    private var groupPicker: some View {
-        @Bindable var store = groupStore
-        Menu {
-            ForEach(groupStore.groups) { group in
-                Button(action: { groupStore.selectedGroupID = group.id }) {
-                    HStack {
-                        Text(group.name)
-                        if group.id == groupStore.selectedGroupID {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
-            Image(systemName: "chevron.down.circle")
-                .foregroundStyle(Color.tealAccent)
-        }
+    private func countdownString(remaining: TimeInterval) -> String {
+        let r = Int(remaining)
+        let h = r / 3600
+        let m = (r % 3600) / 60
+        let s = r % 60
+        return String(format: "%02d:%02d:%02d", h, m, s)
     }
 
-    // MARK: - Create Group Sheet
-
-    private var createGroupSheet: some View {
-        NavigationStack {
-            ZStack {
-                Color.darkBackground.ignoresSafeArea()
-
-                VStack(spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Group Name")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        TextField("Family Name", text: $newGroupName)
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Your Name")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        TextField("Your display name", text: $newCreatorName)
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    Spacer()
-                }
-                .padding()
-            }
-            .navigationTitle("Create Group")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        showCreateGroup = false
-                        newGroupName = ""
-                        newCreatorName = ""
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
-                        groupStore.createGroup(
-                            name: newGroupName,
-                            creatorName: newCreatorName
-                        )
-                        showCreateGroup = false
-                        newGroupName = ""
-                        newCreatorName = ""
-                    }
-                    .disabled(newGroupName.isEmpty || newCreatorName.isEmpty)
-                    .tint(Color.amberCTA)
-                }
-            }
-        }
-        .presentationDetents([.medium])
+    private func sequenceString(for group: Group, at timestamp: TimeInterval) -> String {
+        let counter = Int(timestamp) / group.interval.seconds
+        return String(format: "%04d", counter % 10_000)
     }
 
-    // MARK: - Helpers
-
-    private func formatTimeRemaining(_ seconds: TimeInterval) -> String {
-        let totalSeconds = Int(seconds)
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let secs = totalSeconds % 60
-
-        if hours > 0 {
-            return String(format: "%02d:%02d:%02d", hours, minutes, secs)
+    private func secondaryCountdownText(
+        group: Group,
+        timestamp: TimeInterval,
+        hours: Int,
+        minutes: Int,
+        seconds: Int
+    ) -> String {
+        let remaining = hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m \(seconds)s"
+        guard previewNextWord,
+              let next = groupStore.safeword(for: group, at: timestamp + Double(group.interval.seconds)) else {
+            return "rotates in \(remaining)"
         }
-        return String(format: "%02d:%02d", minutes, secs)
+        return "rotates in \(remaining) · next: \(next)"
+    }
+
+    private func groupColor(for group: Group) -> Color {
+        let idx = abs(group.id.hashValue) % 5
+        return DotPalette.forIndex(idx)
     }
 }
 
-#Preview {
-    HomeView()
-        .environment(GroupStore())
+// App-wide screen enum used by our custom tab bar and state navigation.
+enum AppScreen: String, CaseIterable {
+    case home, groups, verify, settings, onboarding, addMember, qrScanner, recoveryPhrase, drills
 }

@@ -1,70 +1,79 @@
 import SwiftUI
 
-/// Circular progress ring showing time remaining until the next safeword rotation.
+// Dashed-dial countdown ring: 60 ticks (larger at each 5th), an ember
+// progress arc, and a knob on the leading edge. Matches the design's
+// CountdownRing primitive (tick spec is in the handoff bundle).
 struct CountdownRing<Content: View>: View {
     let progress: Double
-    let interval: RotationInterval
     @ViewBuilder let content: () -> Content
 
-    /// Ring line width.
-    private let lineWidth: CGFloat = 8
-
     var body: some View {
-        ZStack {
-            // Background ring
-            Circle()
-                .stroke(Color.tealDark.opacity(0.3), lineWidth: lineWidth)
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            let r = size / 2 - 12
+            let cx = size / 2
+            let cy = size / 2
 
-            // Progress ring
-            Circle()
-                .trim(from: 0, to: CGFloat(min(progress, 1.0)))
-                .stroke(
-                    AngularGradient(
-                        gradient: Gradient(colors: [
-                            Color.tealAccent,
-                            Color.tealDark,
-                            Color.tealAccent
-                        ]),
-                        center: .center,
-                        startAngle: .degrees(0),
-                        endAngle: .degrees(360)
-                    ),
-                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .animation(.linear(duration: 1.0), value: progress)
+            ZStack {
+                // 60 ticks
+                ForEach(0..<60, id: \.self) { i in
+                    let big = i % 5 == 0
+                    let a = Double(i) / 60.0 * 2 * .pi - .pi / 2
+                    let r1 = r - (big ? 6 : 3)
+                    let r2 = r + (big ? 2 : 0)
+                    let elapsed = Double(i) / 60.0 < progress
+                    Path { p in
+                        p.move(to: CGPoint(x: cx + cos(a) * r1, y: cy + sin(a) * r1))
+                        p.addLine(to: CGPoint(x: cx + cos(a) * r2, y: cy + sin(a) * r2))
+                    }
+                    .stroke(
+                        Ink.fgFaint.opacity(elapsed ? 0.9 : 0.25),
+                        style: StrokeStyle(lineWidth: big ? 1 : 0.6, lineCap: .round)
+                    )
+                }
 
-            // Glow dot at the leading edge
-            GeometryReader { geometry in
-                let radius = min(geometry.size.width, geometry.size.height) / 2
-                let angle = Angle.degrees(360 * progress - 90)
-                let x = radius + radius * CGFloat(cos(angle.radians)) - lineWidth / 2
-                let y = radius + radius * CGFloat(sin(angle.radians)) - lineWidth / 2
-
+                // Progress arc
                 Circle()
-                    .fill(Color.tealAccent)
-                    .frame(width: lineWidth, height: lineWidth)
-                    .shadow(color: Color.tealAccent.opacity(0.6), radius: 4)
-                    .position(x: x + lineWidth / 2, y: y + lineWidth / 2)
-            }
+                    .trim(from: 0, to: CGFloat(min(max(progress, 0), 1)))
+                    .stroke(Ink.accent, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: r * 2, height: r * 2)
+                    .position(x: cx, y: cy)
 
-            // Center content
-            content()
+                // Knob
+                let angle = progress * 2 * .pi - .pi / 2
+                Circle()
+                    .fill(Ink.accent)
+                    .frame(width: 10, height: 10)
+                    .position(x: cx + cos(angle) * r, y: cy + sin(angle) * r)
+                Circle()
+                    .stroke(Ink.accent.opacity(0.25), lineWidth: 1)
+                    .frame(width: 16, height: 16)
+                    .position(x: cx + cos(angle) * r, y: cy + sin(angle) * r)
+
+                content()
+            }
         }
     }
 }
 
 #Preview {
     ZStack {
-        Color.black.ignoresSafeArea()
-
-        CountdownRing(progress: 0.65, interval: .daily) {
-            VStack(spacing: 8) {
-                Text("Breezy Rocket 75")
-                    .font(.title3.bold())
-                    .foregroundStyle(Color.tealAccent)
+        Ink.bg.ignoresSafeArea()
+        CountdownRing(progress: 0.013) {
+            VStack(spacing: 14) {
+                SectionLabel(text: "● LIVE · JOHNSON FAMILY", color: Ink.accent)
+                VStack(spacing: 2) {
+                    Text("Crimson").font(Fonts.display(46)).foregroundStyle(Ink.fg)
+                    Text("Anchor").font(Fonts.display(46)).foregroundStyle(Ink.fg)
+                    Text("47").font(Fonts.display(46)).foregroundStyle(Ink.fg)
+                }
+                Text("SEQ · 0142")
+                    .font(Fonts.mono(11))
+                    .tracking(1.5)
+                    .foregroundStyle(Ink.fgFaint)
             }
         }
-        .frame(width: 280, height: 280)
+        .frame(width: 340, height: 340)
     }
 }

@@ -2,46 +2,124 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(GroupStore.self) private var groupStore
+    @AppStorage("plainMode") private var plainMode: Bool = false
+    @AppStorage("onboarded") private var onboarded: Bool = false
+    @AppStorage("requireBiometrics") private var requireBiometrics: Bool = false
+    @State private var screen: AppScreen = .home
+    @State private var biometricUnlocked = false
 
     var body: some View {
-        TabView {
-            Tab("Home", systemImage: "shield.fill") {
-                HomeView()
+        if requireBiometrics && !biometricUnlocked {
+            BiometricGateView {
+                biometricUnlocked = true
             }
-
-            Tab("Groups", systemImage: "person.3.fill") {
-                GroupsView()
-            }
-
-            Tab("Settings", systemImage: "gearshape.fill") {
-                SettingsView()
+        } else {
+            if plainMode {
+                PlainRoot()
+            } else {
+                mainRoot
             }
         }
-        .tint(Color.tealAccent)
+    }
+
+    private var mainRoot: some View {
+        ZStack(alignment: .bottom) {
+            Ink.bg.ignoresSafeArea()
+
+            Group {
+                if !onboarded && groupStore.groups.isEmpty && screen != .qrScanner && screen != .recoveryPhrase {
+                    OnboardingView(screen: $screen)
+                        .onChange(of: screen) { _, new in
+                            if new == .home, !groupStore.groups.isEmpty { onboarded = true }
+                        }
+                } else {
+                    switch screen {
+                    case .home:       HomeView(screen: $screen)
+                    case .groups:     GroupsView(screen: $screen)
+                    case .verify:     VerifyView(screen: $screen)
+                    case .settings:   SettingsView(screen: $screen)
+                    case .onboarding: OnboardingView(screen: $screen)
+                    case .addMember:  QRDisplayView(screen: $screen)
+                    case .qrScanner:
+                        QRScannerView(
+                            onJoined: { group in
+                                groupStore.selectedGroupID = group.id
+                                onboarded = true
+                                screen = .home
+                            },
+                            onCancel: {
+                                screen = groupStore.groups.isEmpty ? .onboarding : .groups
+                            },
+                            onRecovery: {
+                                screen = .recoveryPhrase
+                            }
+                        )
+                    case .recoveryPhrase:
+                        RecoveryPhraseView(screen: $screen)
+                    case .drills:
+                        DrillsView(screen: $screen)
+                    }
+                }
+            }
+
+            if tabBarShown {
+                CustomTabBar(active: $screen)
+                    .transition(.opacity)
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private var tabBarShown: Bool {
+        switch screen {
+        case .onboarding, .addMember, .qrScanner, .recoveryPhrase, .drills: return false
+        default: return onboarded || !groupStore.groups.isEmpty
+        }
     }
 }
 
-// MARK: - Color Constants
+private struct BiometricGateView: View {
+    let onUnlock: () -> Void
+    @State private var failed = false
 
-extension Color {
-    static let tealAccent = Color(hex: "#2dd4bf")
-    static let tealDark = Color(hex: "#0f766e")
-    static let amberCTA = Color(hex: "#d97706")
-    static let darkBackground = Color(hex: "#0a0a0a")
-    static let cardBackground = Color(hex: "#1a1a1a")
-    static let cardBorder = Color(hex: "#2a2a2a")
+    var body: some View {
+        ZStack {
+            Ink.bg.ignoresSafeArea()
+            VStack(spacing: 18) {
+                Image(systemName: "faceid")
+                    .font(.system(size: 52, weight: .light))
+                    .foregroundStyle(Ink.accent)
+                Text("Unlock Safewords")
+                    .font(Fonts.display(30))
+                    .foregroundStyle(Ink.fg)
+                Text(failed ? "Authentication failed. Try again." : "Use \(BiometricService.biometryName()) to open the app.")
+                    .font(Fonts.body(14))
+                    .foregroundStyle(failed ? Ink.warn : Ink.fgMuted)
+                    .multilineTextAlignment(.center)
+                Button("Unlock") {
+                    Task { await unlock() }
+                }
+                .font(Fonts.body(15, weight: .semibold))
+                .foregroundStyle(Ink.accentInk)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+                .background(Capsule().fill(Ink.accent))
+            }
+            .padding(28)
+        }
+        .task { await unlock() }
+        .preferredColorScheme(.dark)
+    }
 
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-        let scanner = Scanner(string: hex)
-        var rgbValue: UInt64 = 0
-        scanner.scanHexInt64(&rgbValue)
-
-        let r = Double((rgbValue & 0xFF0000) >> 16) / 255.0
-        let g = Double((rgbValue & 0x00FF00) >> 8) / 255.0
-        let b = Double(rgbValue & 0x0000FF) / 255.0
-
-        self.init(red: r, green: g, blue: b)
+    private func unlock() async {
+        let ok = await BiometricService.authenticate(reason: "Unlock Safewords")
+        await MainActor.run {
+            if ok {
+                onUnlock()
+            } else {
+                failed = true
+            }
+        }
     }
 }
 
