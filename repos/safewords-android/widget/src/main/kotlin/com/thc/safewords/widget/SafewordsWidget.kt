@@ -21,7 +21,7 @@ import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
+import androidx.glance.color.ColorProvider
 import com.thc.safewords.crypto.TOTPDerivation
 import com.thc.safewords.service.GroupRepository
 import java.util.Locale
@@ -82,21 +82,22 @@ private fun WidgetContent(
     phrase: String,
     timeRemaining: String
 ) {
+    // Ink theme tokens (duplicated — widget is its own module).
     val surfaceColor = ColorProvider(
-        day = androidx.compose.ui.graphics.Color(0xFF1A1A1A),
-        night = androidx.compose.ui.graphics.Color(0xFF1A1A1A)
+        day = androidx.compose.ui.graphics.Color(0xFF151517),
+        night = androidx.compose.ui.graphics.Color(0xFF151517)
     )
     val tealColor = ColorProvider(
-        day = androidx.compose.ui.graphics.Color(0xFF2DD4BF),
-        night = androidx.compose.ui.graphics.Color(0xFF2DD4BF)
+        day = androidx.compose.ui.graphics.Color(0xFFE8553A),
+        night = androidx.compose.ui.graphics.Color(0xFFE8553A)
     )
     val textPrimary = ColorProvider(
-        day = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
-        night = androidx.compose.ui.graphics.Color(0xFFFFFFFF)
+        day = androidx.compose.ui.graphics.Color(0xFFF5F2EC),
+        night = androidx.compose.ui.graphics.Color(0xFFF5F2EC)
     )
     val textMuted = ColorProvider(
-        day = androidx.compose.ui.graphics.Color(0x80FFFFFF),
-        night = androidx.compose.ui.graphics.Color(0x80FFFFFF)
+        day = androidx.compose.ui.graphics.Color(0x8CF5F2EC),
+        night = androidx.compose.ui.graphics.Color(0x8CF5F2EC)
     )
 
     Column(

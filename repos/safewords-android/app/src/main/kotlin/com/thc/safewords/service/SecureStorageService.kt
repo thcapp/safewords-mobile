@@ -1,17 +1,15 @@
 package com.thc.safewords.service
 
-import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import com.thc.safewords.SafewordsApp
 
 /**
- * Secure storage for group seeds using EncryptedSharedPreferences.
+ * Encrypted storage for per-group seeds + opaque blobs (drill history, etc.).
  *
- * Seeds are stored as hex strings, backed by Android Keystore via
- * the MasterKey. This ensures seeds are encrypted at rest and tied
- * to the device's hardware-backed keystore.
+ * Backed by Android Keystore via MasterKey — values are encrypted at rest and
+ * tied to the device. saveSeed returns false if the underlying commit fails.
  */
 object SecureStorageService {
 
@@ -29,39 +27,26 @@ object SecureStorageService {
         )
     }
 
-    /**
-     * Save a seed for a group.
-     *
-     * @param groupId the group's unique identifier
-     * @param seedHex the 256-bit seed as a hex string (64 chars)
-     */
-    fun saveSeed(groupId: String, seedHex: String) {
-        prefs.edit().putString("$SEED_PREFIX$groupId", seedHex).apply()
-    }
+    /** Save a seed for a group. Returns true on success. */
+    fun saveSeed(groupId: String, seedHex: String): Boolean =
+        prefs.edit().putString("$SEED_PREFIX$groupId", seedHex).commit()
 
-    /**
-     * Retrieve a seed for a group.
-     *
-     * @param groupId the group's unique identifier
-     * @return the hex-encoded seed, or null if not found
-     */
-    fun getSeed(groupId: String): String? {
-        return prefs.getString("$SEED_PREFIX$groupId", null)
-    }
+    fun getSeed(groupId: String): String? =
+        prefs.getString("$SEED_PREFIX$groupId", null)
 
-    /**
-     * Delete a seed for a group.
-     *
-     * @param groupId the group's unique identifier
-     */
     fun deleteSeed(groupId: String) {
         prefs.edit().remove("$SEED_PREFIX$groupId").apply()
     }
 
-    /**
-     * Check if a seed exists for a group.
-     */
-    fun hasSeed(groupId: String): Boolean {
-        return prefs.contains("$SEED_PREFIX$groupId")
+    fun hasSeed(groupId: String): Boolean =
+        prefs.contains("$SEED_PREFIX$groupId")
+
+    // ─── Generic string storage (drill history, etc.) ──────────────────
+
+    fun saveString(key: String, value: String) {
+        prefs.edit().putString(key, value).apply()
     }
+
+    fun getString(key: String): String? =
+        prefs.getString(key, null)
 }

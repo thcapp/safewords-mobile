@@ -6,21 +6,45 @@ plugins {
 
 android {
     namespace = "com.thc.safewords"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.thc.safewords"
+        applicationId = "app.thc.safewords"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        targetSdk = 35
+        versionCode = 3
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            // Reads from ~/.gradle/safewords.properties OR project gradle.properties OR env vars
+            val keystorePath = (findProperty("safewords.keystorePath") as? String)
+                ?: System.getenv("SAFEWORDS_KEYSTORE_PATH")
+                ?: "${System.getProperty("user.home")}/keystores/safewords-release.jks"
+            val keystorePassword = (findProperty("safewords.keystorePassword") as? String)
+                ?: System.getenv("SAFEWORDS_KEYSTORE_PASSWORD")
+                ?: ""
+            val keyAlias = (findProperty("safewords.keyAlias") as? String)
+                ?: System.getenv("SAFEWORDS_KEY_ALIAS")
+                ?: "safewords"
+            val keyPassword = (findProperty("safewords.keyPassword") as? String)
+                ?: System.getenv("SAFEWORDS_KEY_PASSWORD")
+                ?: keystorePassword
+
+            storeFile = file(keystorePath)
+            storePassword = keystorePassword
+            this.keyAlias = keyAlias
+            this.keyPassword = keyPassword
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -67,6 +91,8 @@ dependencies {
     implementation(libs.zxing.core)
 
     implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.fragment.ktx)
 
     implementation(libs.gson)
 

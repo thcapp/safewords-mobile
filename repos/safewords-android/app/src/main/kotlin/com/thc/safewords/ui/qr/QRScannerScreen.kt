@@ -234,7 +234,10 @@ fun QRScannerScreen(
                                 memberName = memberName.trim()
                             )
                             scannedPayload = null
-                            onGroupJoined(group.id)
+                            if (group != null) {
+                                GroupRepository.setActiveGroup(group.id)
+                                onGroupJoined(group.id)
+                            }
                         }
                     },
                     enabled = memberName.isNotBlank()

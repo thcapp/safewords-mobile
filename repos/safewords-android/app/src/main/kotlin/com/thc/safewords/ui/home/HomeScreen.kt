@@ -1,20 +1,23 @@
 package com.thc.safewords.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,177 +30,218 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.thc.safewords.crypto.TOTPDerivation
 import com.thc.safewords.model.Group
 import com.thc.safewords.service.GroupRepository
 import com.thc.safewords.ui.components.CountdownRing
-import com.thc.safewords.ui.components.SafewordDisplay
-import com.thc.safewords.ui.theme.Amber
-import com.thc.safewords.ui.theme.Background
-import com.thc.safewords.ui.theme.Teal
-import com.thc.safewords.ui.theme.TextMuted
-import com.thc.safewords.ui.theme.TextSecondary
+import com.thc.safewords.ui.components.GroupDot
+import com.thc.safewords.ui.components.SectionLabel
+import com.thc.safewords.ui.theme.DotPalette
+import com.thc.safewords.ui.theme.Ink
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 
 @Composable
-fun HomeScreen(
-    onNavigateToGroups: () -> Unit
-) {
+fun HomeScreen(onNavigateToGroups: () -> Unit) {
     val groups by GroupRepository.groups.collectAsState()
-    var selectedGroup by remember { mutableStateOf<Group?>(null) }
-    var currentPhrase by remember { mutableStateOf("") }
-    var timeRemaining by remember { mutableLongStateOf(0L) }
-    var progress by remember { mutableFloatStateOf(1f) }
-    var dropdownExpanded by remember { mutableStateOf(false) }
+    val activeId by GroupRepository.activeGroupId.collectAsState()
+    val selected = groups.firstOrNull { it.id == activeId } ?: groups.firstOrNull()
+    var phrase by remember { mutableStateOf("") }
+    var remaining by remember { mutableLongStateOf(0L) }
+    var progress by remember { mutableFloatStateOf(0f) }
 
-    // Select the first group by default, or update if groups change
-    LaunchedEffect(groups) {
-        if (groups.isNotEmpty()) {
-            if (selectedGroup == null || groups.none { it.id == selectedGroup?.id }) {
-                selectedGroup = groups.first()
-            }
-        } else {
-            selectedGroup = null
+    // Promote first group to active if none selected.
+    LaunchedEffect(groups, activeId) {
+        if (activeId == null && groups.isNotEmpty()) {
+            GroupRepository.setActiveGroup(groups.first().id)
         }
     }
 
-    // Update safeword and countdown every second
-    LaunchedEffect(selectedGroup) {
-        val group = selectedGroup ?: return@LaunchedEffect
+    LaunchedEffect(selected?.id) {
+        val g = selected ?: return@LaunchedEffect
         while (true) {
-            val seed = GroupRepository.getGroupSeed(group.id)
+            val seed = GroupRepository.getGroupSeed(g.id)
             if (seed != null) {
                 val now = System.currentTimeMillis() / 1000
-                currentPhrase = TOTPDerivation.deriveSafeword(seed, group.interval.seconds, now)
-                timeRemaining = TOTPDerivation.getTimeRemaining(group.interval.seconds)
-                progress = timeRemaining.toFloat() / group.interval.seconds.toFloat()
+                phrase = TOTPDerivation.deriveSafeword(seed, g.interval.seconds, now)
+                remaining = TOTPDerivation.getTimeRemaining(g.interval.seconds)
+                progress = 1f - (remaining.toFloat() / g.interval.seconds.toFloat())
             }
             delay(1000L)
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Background)
-    ) {
-        if (groups.isEmpty()) {
-            // Empty state
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "Safewords",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = Teal
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Create a group or join one to start generating rotating safewords for your family.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(
-                    onClick = onNavigateToGroups,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Amber,
-                        contentColor = Background
-                    )
-                ) {
-                    Text("Get Started")
-                }
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(24.dp))
+    Box(modifier = Modifier.fillMaxSize().background(Ink.bg)) {
+        val g = selected ?: run { EmptyState(onNavigateToGroups); return }
 
-                // Group selector
-                if (groups.size > 1) {
-                    Box {
-                        OutlinedButton(
-                            onClick = { dropdownExpanded = true },
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = TextSecondary
+        // Top bar pills
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 0.dp)
+                .padding(top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Ink.bgElev)
+                    .border(0.5.dp, Ink.rule, CircleShape)
+                    .clickable { onNavigateToGroups() }
+                    .padding(start = 7.dp, end = 12.dp)
+                    .padding(vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GroupDot(
+                    initial = g.name.take(1),
+                    color = DotPalette[abs(g.id.hashCode()) % DotPalette.size],
+                    size = 24.dp
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    g.name,
+                    color = Ink.fg,
+                    style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.1).sp)
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            // Bell is reserved for future notifications; hidden for v1.1.0.
+        }
+
+        // Hero
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 60.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
+            Spacer(Modifier.height(30.dp))
+            CountdownRing(progress = progress, size = 340.dp) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(Ink.accent)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        SectionLabel("LIVE · ${g.name.uppercase()}", color = Ink.accent)
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    if (phrase.isNotEmpty()) {
+                        phrase.split(" ").forEach { w ->
+                            Text(
+                                w,
+                                color = Ink.fg,
+                                style = TextStyle(
+                                    fontSize = 46.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    letterSpacing = (-1.5).sp
+                                ),
+                                textAlign = TextAlign.Center
                             )
-                        ) {
-                            Text(selectedGroup?.name ?: "Select Group")
-                        }
-                        DropdownMenu(
-                            expanded = dropdownExpanded,
-                            onDismissRequest = { dropdownExpanded = false }
-                        ) {
-                            groups.forEach { group ->
-                                DropdownMenuItem(
-                                    text = { Text(group.name) },
-                                    onClick = {
-                                        selectedGroup = group
-                                        dropdownExpanded = false
-                                    }
-                                )
-                            }
                         }
                     }
-                } else {
+                    Spacer(Modifier.height(14.dp))
                     Text(
-                        text = selectedGroup?.name ?: "",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TextSecondary
+                        "SEQ · ${"%04d".format(sequenceFor(g))}",
+                        color = Ink.fgFaint,
+                        style = TextStyle(fontSize = 11.sp, letterSpacing = 1.5.sp)
                     )
                 }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Countdown ring with safeword
-                CountdownRing(
-                    progress = progress,
-                    size = 280.dp,
-                    strokeWidth = 12.dp
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        if (currentPhrase.isNotEmpty()) {
-                            SafewordDisplay(
-                                phrase = currentPhrase,
-                                isLarge = true
-                            )
-                        }
+            }
+            Spacer(Modifier.height(28.dp))
+            Text(
+                formatCountdown(remaining),
+                color = Ink.fg,
+                style = TextStyle(fontSize = 28.sp, letterSpacing = 2.sp)
+            )
+            Spacer(Modifier.height(8.dp))
+            val previewEnabled = remember { GroupRepository.isPreviewNextWord() }
+            val nextPreview = remember(g.id, remaining) {
+                if (!previewEnabled) "•••••"
+                else {
+                    val seed = GroupRepository.getGroupSeed(g.id)
+                    if (seed == null) "•••••"
+                    else {
+                        val nextTs = (System.currentTimeMillis() / 1000) + remaining + 1
+                        TOTPDerivation.deriveSafeword(seed, g.interval.seconds, nextTs)
                     }
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Time remaining
-                Text(
-                    text = "Rotates in ${TOTPDerivation.formatTimeRemaining(timeRemaining)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextMuted
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Interval label
-                Text(
-                    text = selectedGroup?.interval?.displayName ?: "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextMuted
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
             }
+            Text(
+                "rotates in ${friendlyInterval(remaining)} · next: $nextPreview",
+                color = Ink.fgMuted,
+                style = TextStyle(fontSize = 12.sp, letterSpacing = 0.2.sp)
+            )
         }
     }
+}
+
+@Composable
+private fun EmptyState(onNavigateToGroups: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            "Safewords",
+            color = Ink.accent,
+            style = TextStyle(fontSize = 36.sp, letterSpacing = (-1.4).sp)
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Create a group or join one to start\nsharing rotating safewords.",
+            color = Ink.fgMuted,
+            style = TextStyle(fontSize = 15.sp),
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(24.dp))
+        Box(
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(Ink.accent)
+                .clickable { onNavigateToGroups() }
+                .padding(horizontal = 22.dp, vertical = 14.dp)
+        ) {
+            Text(
+                "Get started",
+                color = Ink.accentInk,
+                style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            )
+        }
+    }
+}
+
+private fun formatCountdown(seconds: Long): String {
+    val h = (seconds / 3600).toInt()
+    val m = ((seconds % 3600) / 60).toInt()
+    val s = (seconds % 60).toInt()
+    return "%02d:%02d:%02d".format(h, m, s)
+}
+
+private fun friendlyInterval(seconds: Long): String {
+    val h = (seconds / 3600).toInt()
+    val m = ((seconds % 3600) / 60).toInt()
+    val s = (seconds % 60).toInt()
+    return if (h > 0) "${h}h ${m}m" else "${m}m ${s}s"
+}
+
+private fun sequenceFor(group: Group): Int {
+    val counter = (System.currentTimeMillis() / 1000) / group.interval.seconds
+    return (counter % 10_000).toInt()
 }
