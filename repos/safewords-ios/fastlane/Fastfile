@@ -133,24 +133,35 @@ def sync_appstore_profiles(readonly:)
     ENV["MATCH_GIT_BASIC_AUTHORIZATION"] = nil
     ENV["GIT_CONFIG_PARAMETERS"] = "'credential.helper='"
     ENV["GIT_TERMINAL_PROMPT"] = "0"
+
+    # The workflow's Materialize step writes the raw .p8 to
+    # APP_STORE_CONNECT_API_KEY_PATH. Modern fastlane expects that env var to
+    # point to a JSON wrapper file, NOT a raw PEM. Convert it: read the .p8,
+    # write a JSON wrapper next to it, repoint the env var.
+    raw_path = ENV["APP_STORE_CONNECT_API_KEY_PATH"].to_s
+    if !raw_path.empty? && File.exist?(raw_path)
+      require "json"
+      pem = File.read(raw_path)
+      json_path = raw_path.sub(/\.p8\z/, "") + ".json"
+      File.write(json_path, JSON.generate({
+        "key_id" => ENV["APP_STORE_CONNECT_API_KEY_ID"],
+        "issuer_id" => ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+        "key" => pem,
+        "in_house" => false
+      }))
+      File.chmod(0600, json_path)
+      ENV["APP_STORE_CONNECT_API_KEY_PATH"] = json_path
+    end
   end
 
-  match_args = {
+  match(
     type: "appstore",
     app_identifier: APP_IDENTIFIERS,
     team_id: apple_team_id,
     git_url: url,
     readonly: readonly,
     storage_mode: "git"
-  }
-  # In CI, the Materialize step writes the .p8 to APP_STORE_CONNECT_API_KEY_PATH
-  # and clears the base64 env. Let match auto-detect the path; passing api_key
-  # explicitly here would conflict with the path env in match's cert sub-action.
-  # Locally, fall through to the explicit api_key Hash.
-  if ENV["CI"] != "true" || ENV["APP_STORE_CONNECT_API_KEY_PATH"].to_s.empty?
-    match_args[:api_key] = asc_api_key
-  end
-  match(**match_args)
+  )
 end
 
 def configure_code_signing!
