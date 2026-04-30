@@ -133,6 +133,13 @@ def sync_appstore_profiles(readonly:)
     ENV["MATCH_GIT_BASIC_AUTHORIZATION"] = nil
     ENV["GIT_CONFIG_PARAMETERS"] = "'credential.helper='"
     ENV["GIT_TERMINAL_PROMPT"] = "0"
+
+    # We construct an api_key Hash and pass it explicitly to match. The
+    # workflow also sets APP_STORE_CONNECT_API_KEY_PATH; match's internal
+    # cert sub-action picks up BOTH and errors with
+    # "Unresolved conflict between options: 'api_key_path' and 'api_key'".
+    # Clear the env path so api_key (Hash) is the only source.
+    ENV["APP_STORE_CONNECT_API_KEY_PATH"] = nil
   end
 
   match(
