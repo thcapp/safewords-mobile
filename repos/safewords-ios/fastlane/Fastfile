@@ -160,7 +160,10 @@ def sync_appstore_profiles(readonly:)
     team_id: apple_team_id,
     git_url: url,
     readonly: readonly,
-    storage_mode: "git"
+    storage_mode: "git",
+    force: !readonly,
+    force_for_new_devices: !readonly,
+    include_all_certificates: !readonly
   )
 end
 
