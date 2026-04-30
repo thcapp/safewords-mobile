@@ -38,17 +38,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.thc.safewords.crypto.Bip39
+import com.thc.safewords.crypto.RecoveryPhrase
+import com.thc.safewords.crypto.TOTPDerivation
 import com.thc.safewords.model.RotationInterval
 import com.thc.safewords.service.GroupRepository
 import com.thc.safewords.ui.components.SectionLabel
 import com.thc.safewords.ui.theme.Ink
 
 /**
- * Restore a group from a 64-character hex seed (or 32 bytes of raw hex).
- *
- * v1.1.0 ships hex-only entry. BIP39 mnemonic decoding is deferred to v1.2.0
- * — the user-facing label still says "recovery phrase" for forward-compat;
- * we accept either a real mnemonic later or the raw hex now.
+ * Restore a group from either a 24-word BIP39 recovery phrase (preferred) or
+ * a 64-character hex seed (legacy backup format).
  */
 @Composable
 fun RecoveryPhraseScreen(
@@ -61,7 +61,9 @@ fun RecoveryPhraseScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scroll = rememberScrollState()
 
-    val parsedHex = remember(phrase) { parseSeedInput(phrase) }
+    val parseResult = remember(phrase) { parseSeedOrPhrase(phrase) }
+    val parsedHex = (parseResult as? ParseResult.Ok)?.hex
+    val parseError = (parseResult as? ParseResult.Err)?.message
     val canSubmit = parsedHex != null && groupName.isNotBlank() && memberName.isNotBlank()
 
     Box(modifier = Modifier.fillMaxSize().background(Ink.bg)) {
@@ -97,13 +99,19 @@ fun RecoveryPhraseScreen(
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                "64 hex characters from your backup. The group name and your name are local labels — they don't have to match the original.",
+                "Paste either a 24-word recovery phrase or a 64-character hex seed from your backup. The group name and your name are local labels — they don't have to match the original.",
                 color = Ink.fgMuted,
                 style = TextStyle(fontSize = 15.sp, lineHeight = 22.sp)
             )
 
             Spacer(Modifier.height(24.dp))
-            LabeledField("Seed (hex)", phrase, { phrase = it; error = null }, placeholder = "0102…1f20", monospace = true)
+            LabeledField(
+                "Recovery phrase or seed",
+                phrase,
+                { phrase = it; error = null },
+                placeholder = "abandon abandon … art   OR   0102…1f20",
+                monospace = true
+            )
             Spacer(Modifier.height(14.dp))
             LabeledField("Group name", groupName, { groupName = it }, placeholder = "Johnson Family")
             Spacer(Modifier.height(14.dp))
@@ -112,8 +120,8 @@ fun RecoveryPhraseScreen(
             Spacer(Modifier.height(20.dp))
             if (error != null) {
                 ErrorBanner(error!!)
-            } else if (parsedHex == null && phrase.isNotBlank()) {
-                ErrorBanner("Seed must be exactly 64 hex characters (0–9, a–f).")
+            } else if (parseError != null && phrase.isNotBlank()) {
+                ErrorBanner(parseError)
             }
 
             Spacer(Modifier.height(20.dp))
@@ -150,11 +158,38 @@ fun RecoveryPhraseScreen(
     }
 }
 
-private fun parseSeedInput(input: String): String? {
-    val cleaned = input.trim().lowercase().replace("\\s".toRegex(), "")
-    if (cleaned.length != 64) return null
-    if (!cleaned.all { it in '0'..'9' || it in 'a'..'f' }) return null
-    return cleaned
+private sealed class ParseResult {
+    data class Ok(val hex: String) : ParseResult()
+    data class Err(val message: String) : ParseResult()
+    data object Empty : ParseResult()
+}
+
+private fun parseSeedOrPhrase(input: String): ParseResult {
+    val trimmed = input.trim()
+    if (trimmed.isEmpty()) return ParseResult.Empty
+
+    // First try a BIP39 phrase if it looks word-like (contains letters and at
+    // least one space).
+    if (trimmed.any { it.isLetter() } && trimmed.contains(Regex("\\s"))) {
+        return try {
+            val seed = RecoveryPhrase.decode(trimmed)
+            ParseResult.Ok(TOTPDerivation.bytesToHex(seed))
+        } catch (e: Bip39.Error) {
+            ParseResult.Err(e.userMessage)
+        } catch (e: Throwable) {
+            ParseResult.Err("Couldn't read that recovery phrase.")
+        }
+    }
+
+    // Fall back to hex seed.
+    val cleaned = trimmed.lowercase().replace("\\s".toRegex(), "")
+    if (cleaned.length != 64) {
+        return ParseResult.Err("Recovery phrase must be exactly 24 words, or seed must be 64 hex characters.")
+    }
+    if (!cleaned.all { it in '0'..'9' || it in 'a'..'f' }) {
+        return ParseResult.Err("Hex seed contains characters other than 0–9 and a–f.")
+    }
+    return ParseResult.Ok(cleaned)
 }
 
 @Composable

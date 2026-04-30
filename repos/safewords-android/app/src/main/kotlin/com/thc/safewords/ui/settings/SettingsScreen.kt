@@ -55,7 +55,8 @@ fun SettingsScreen(
     onPlainModeChange: (Boolean) -> Unit,
     onRunDrill: () -> Unit,
     onDrillHistory: () -> Unit,
-    onOpenGenerator: () -> Unit = {}
+    onOpenGenerator: () -> Unit = {},
+    onBackupSeedPhrase: () -> Unit = {}
 ) {
     val groups by GroupRepository.groups.collectAsState()
     val activeId by GroupRepository.activeGroupId.collectAsState()
@@ -145,6 +146,13 @@ fun SettingsScreen(
                     enabled = active != null,
                     onClick = { showRotateConfirm = true }
                 )
+                Divider()
+                ActionRow(
+                    label = "Back up seed phrase",
+                    value = "24 words",
+                    enabled = active != null,
+                    onClick = onBackupSeedPhrase
+                )
             }
 
             // ─── Tools ───
@@ -184,7 +192,7 @@ fun SettingsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Safewords v1.1.9 · Offline-first",
+                    "Safewords v1.2.0 · Offline-first",
                     color = Ink.fgFaint,
                     style = TextStyle(fontSize = 11.sp, letterSpacing = 0.3.sp),
                     textAlign = TextAlign.Center

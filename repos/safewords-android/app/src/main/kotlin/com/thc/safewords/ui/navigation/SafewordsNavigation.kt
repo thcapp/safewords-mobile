@@ -55,6 +55,7 @@ import com.thc.safewords.ui.onboarding.RecoveryPhraseScreen
 import com.thc.safewords.ui.plain.PlainRoot
 import com.thc.safewords.ui.qr.QRDisplayScreen
 import com.thc.safewords.ui.qr.QRScannerScreen
+import com.thc.safewords.ui.settings.RecoveryBackupScreen
 import com.thc.safewords.ui.settings.SettingsScreen
 import com.thc.safewords.ui.theme.Ink
 import com.thc.safewords.ui.verify.VerifyScreen
@@ -68,6 +69,7 @@ sealed class Screen(val route: String) {
     data object RecoveryPhrase : Screen("recovery_phrase")
     data object Drills : Screen("drills")
     data object Generator : Screen("generator")
+    data object RecoveryBackup : Screen("recovery_backup")
     data object GroupDetail : Screen("group/{groupId}") {
         fun createRoute(groupId: String) = "group/$groupId"
     }
@@ -178,7 +180,8 @@ fun SafewordsNavigation() {
                     },
                     onRunDrill = { navController.navigate(Screen.Drills.route) },
                     onDrillHistory = { navController.navigate(Screen.Drills.route) },
-                    onOpenGenerator = { navController.navigate(Screen.Generator.route) }
+                    onOpenGenerator = { navController.navigate(Screen.Generator.route) },
+                    onBackupSeedPhrase = { navController.navigate(Screen.RecoveryBackup.route) }
                 )
             }
             composable(Screen.Drills.route) {
@@ -186,6 +189,9 @@ fun SafewordsNavigation() {
             }
             composable(Screen.Generator.route) {
                 GeneratorScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Screen.RecoveryBackup.route) {
+                RecoveryBackupScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 Screen.GroupDetail.route,

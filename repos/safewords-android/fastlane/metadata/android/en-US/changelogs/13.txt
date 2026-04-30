@@ -1,0 +1,6 @@
+v1.2.0 — BIP39 recovery phrases.
+
+- Back up your group as a 24-word recovery phrase (Settings → Security → "Back up seed phrase"). Biometric-gated.
+- Restore from either a 24-word phrase or a 64-character hex seed.
+- Cross-platform contract: same words work on iOS once that release lands.
+- Encoding follows BIP39 English (entropy-only, no PBKDF2/passphrase).

@@ -21,8 +21,8 @@ android {
         applicationId = "app.thc.safewords"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "1.1.9"
+        versionCode = 13
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -73,6 +73,27 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+// Copy /shared/{wordlists/bip39-english.txt, recovery-vectors.json} into the
+// app test resources before tests run so Bip39Test can load them via classpath.
+val sharedDir = file("../../../shared")
+val testResourcesDir = file("src/test/resources")
+
+val copySharedToTestResources by tasks.registering(Copy::class) {
+    from(File(sharedDir, "wordlists/bip39-english.txt"))
+    from(File(sharedDir, "recovery-vectors.json"))
+    into(testResourcesDir)
+}
+
+tasks.withType<Test>().configureEach {
+    dependsOn(copySharedToTestResources)
+}
+
+// processDebugUnitTestJavaRes also reads from src/test/resources; make sure it
+// runs after the copy task. Same for any other tests in other variants.
+tasks.matching { it.name.startsWith("process") && it.name.contains("UnitTestJavaRes") }.configureEach {
+    dependsOn(copySharedToTestResources)
 }
 
 dependencies {
