@@ -24,7 +24,7 @@ struct RecoveryPhraseView: View {
                         field("Your name", text: $memberName, prompt: "Alex")
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Recovery code")
+                            Text("Recovery phrase or seed")
                                 .font(Fonts.body(12, weight: .medium))
                                 .foregroundStyle(Ink.fgMuted)
                             TextEditor(text: $recoveryInput)
@@ -37,7 +37,7 @@ struct RecoveryPhraseView: View {
                                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Ink.rule, lineWidth: 0.5))
                         }
 
-                        Text("Paste the hex recovery code from group creation. Base64url seeds from QR payloads also work.")
+                        Text("Paste a 24-word recovery phrase or a 64-character hex seed, with or without spaces. The group name and your name are local labels.")
                             .font(Fonts.body(12.5))
                             .foregroundStyle(Ink.fgMuted)
                             .lineSpacing(3)
@@ -92,7 +92,7 @@ struct RecoveryPhraseView: View {
             .buttonStyle(.plain)
             VStack(alignment: .leading, spacing: 2) {
                 SectionLabel(text: "Recovery")
-                Text("Join with a code")
+                Text("Restore a group")
                     .font(Fonts.display(24))
                     .tracking(-0.6)
                     .foregroundStyle(Ink.fg)
@@ -133,7 +133,7 @@ struct RecoveryPhraseView: View {
             onboarded = true
             screen = .home
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Invalid recovery code."
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Invalid recovery phrase."
         }
     }
 }

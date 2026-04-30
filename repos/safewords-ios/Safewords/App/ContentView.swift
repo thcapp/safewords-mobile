@@ -40,6 +40,8 @@ struct ContentView: View {
                     case .settings:   SettingsView(screen: $screen)
                     case .onboarding: OnboardingView(screen: $screen)
                     case .addMember:  QRDisplayView(screen: $screen)
+                    case .recoveryBackup:
+                        RecoveryBackupView(screen: $screen)
                     case .qrScanner:
                         QRScannerView(
                             onJoined: { group in
@@ -72,7 +74,7 @@ struct ContentView: View {
 
     private var tabBarShown: Bool {
         switch screen {
-        case .onboarding, .addMember, .qrScanner, .recoveryPhrase, .drills: return false
+        case .onboarding, .addMember, .qrScanner, .recoveryPhrase, .recoveryBackup, .drills: return false
         default: return onboarded || !groupStore.groups.isEmpty
         }
     }

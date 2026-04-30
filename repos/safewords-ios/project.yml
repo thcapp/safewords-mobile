@@ -30,6 +30,7 @@ targets:
     resources:
       - path: Safewords/Data/adjectives.json
       - path: Safewords/Data/nouns.json
+      - path: ../../shared/wordlists/bip39-english.txt
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.thc.safewords
@@ -59,6 +60,7 @@ targets:
     resources:
       - path: Safewords/Data/adjectives.json
       - path: Safewords/Data/nouns.json
+      - path: ../../shared/wordlists/bip39-english.txt
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.thc.safewords.widget
@@ -84,6 +86,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.thc.safewords.tests
+    resources:
+      - path: ../../shared/recovery-vectors.json
+      - path: ../../shared/wordlists/bip39-english.txt
     dependencies:
       - target: Safewords
 

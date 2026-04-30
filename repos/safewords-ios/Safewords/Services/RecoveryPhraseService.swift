@@ -2,57 +2,53 @@ import Foundation
 
 enum RecoveryPhraseService {
     enum RecoveryError: LocalizedError {
-        case invalidLength
-        case unsupportedWords
+        case invalidSeedFormat
+        case invalidHexCharacters
 
         var errorDescription: String? {
             switch self {
-            case .invalidLength:
-                return "Paste a 64-character hex seed or 43-character base64url seed."
-            case .unsupportedWords:
-                return "Word recovery phrases are not available in this build. Paste the hex recovery code shown when the group was created."
+            case .invalidSeedFormat:
+                return "Recovery phrase must be exactly 24 words, or seed must be 64 hex characters."
+            case .invalidHexCharacters:
+                return "Hex seed contains characters other than 0-9 and a-f."
             }
         }
     }
 
     static func displayCode(for seed: Data) -> String {
-        seed.map { String(format: "%02x", $0) }
-            .joined()
-            .chunked(into: 8)
-            .joined(separator: " ")
+        (try? RecoveryPhrase.encode(seed: seed)) ?? seedHex(seed)
     }
 
     static func parseSeed(from input: String) throws -> Data {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        let compact = trimmed
-            .replacingOccurrences(of: " ", with: "")
-            .replacingOccurrences(of: "-", with: "")
-            .replacingOccurrences(of: "\n", with: "")
-            .lowercased()
+        guard !trimmed.isEmpty else {
+            throw RecoveryPhraseError.emptyInput
+        }
 
-        if compact.range(of: #"^[0-9a-f]{64}$"#, options: .regularExpression) != nil {
+        let compact = trimmed
+            .lowercased(with: Locale(identifier: "en_US_POSIX"))
+            .replacingOccurrences(of: #"[\s-]"#, with: "", options: .regularExpression)
+
+        if compact.count == 64 {
+            guard compact.range(of: #"^[0-9a-f]{64}$"#, options: .regularExpression) != nil else {
+                throw RecoveryError.invalidHexCharacters
+            }
             return Data(hexString: compact)
+        }
+
+        if trimmed.contains(where: \.isLetter), trimmed.contains(where: \.isWhitespace) {
+            return try RecoveryPhrase.decode(input: trimmed)
         }
 
         if let data = Data(base64URLEncoded: trimmed), data.count == 32 {
             return data
         }
 
-        let wordCount = trimmed.split(whereSeparator: \.isWhitespace).count
-        if wordCount == 12 || wordCount == 24 {
-            throw RecoveryError.unsupportedWords
-        }
-        throw RecoveryError.invalidLength
+        throw RecoveryError.invalidSeedFormat
     }
-}
 
-private extension String {
-    func chunked(into size: Int) -> [String] {
-        stride(from: 0, to: count, by: size).map { offset in
-            let start = index(startIndex, offsetBy: offset)
-            let end = index(start, offsetBy: size, limitedBy: endIndex) ?? endIndex
-            return String(self[start..<end])
-        }
+    static func seedHex(_ seed: Data) -> String {
+        seed.map { String(format: "%02x", $0) }.joined()
     }
 }
 

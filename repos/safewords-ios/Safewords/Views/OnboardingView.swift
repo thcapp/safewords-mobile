@@ -96,7 +96,7 @@ struct OnboardingView: View {
         switch flow {
         case .welcome: return "Get started"
         case .start: return "Create a new group"
-        case .create: return pendingSeed == nil ? "Generate recovery code" : "Create group"
+        case .create: return pendingSeed == nil ? "Generate recovery phrase" : "Create group"
         }
     }
 
@@ -240,14 +240,14 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 0) {
             SectionLabel(text: pendingSeed == nil ? "Create · 02" : "Seed · 03")
 
-            Text(pendingSeed == nil ? "Name your group." : "Back up this recovery code.")
+            Text(pendingSeed == nil ? "Name your group." : "Back up this recovery phrase.")
                 .font(Fonts.display(36))
                 .tracking(-1.2)
                 .foregroundStyle(Ink.fg)
                 .padding(.top, 28)
 
             if pendingSeed == nil {
-                Text("This creates a real 256-bit seed on this device. Write down the recovery code before you finish.")
+                Text("This creates a real 256-bit seed on this device. Write down the recovery phrase before you finish.")
                     .font(Fonts.body(15))
                     .foregroundStyle(Ink.fgMuted)
                     .lineSpacing(4)
@@ -265,7 +265,7 @@ struct OnboardingView: View {
                 )
                 .padding(.top, 24)
             } else if let pendingSeed {
-                Text("Anyone with this code can join your group. Keep it offline.")
+                Text("Anyone with these 24 words can join your group. Keep them offline.")
                     .font(Fonts.body(15))
                     .foregroundStyle(Ink.fgMuted)
                     .lineSpacing(4)
@@ -321,7 +321,7 @@ struct OnboardingView: View {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 14))
                     .foregroundStyle(Ink.accent)
-                Text("Write this down before tapping Create group. It is the only recovery path in v1.1.0.")
+                Text("Write this down before tapping Create group. It restores this group's seed if you lose your phone.")
                     .font(Fonts.body(12.5))
                     .foregroundStyle(Ink.accent)
                     .lineSpacing(3)

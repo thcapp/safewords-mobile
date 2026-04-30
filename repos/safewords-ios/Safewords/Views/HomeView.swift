@@ -201,5 +201,5 @@ struct HomeView: View {
 
 // App-wide screen enum used by our custom tab bar and state navigation.
 enum AppScreen: String, CaseIterable {
-    case home, groups, verify, settings, onboarding, addMember, qrScanner, recoveryPhrase, drills
+    case home, groups, verify, settings, onboarding, addMember, qrScanner, recoveryPhrase, recoveryBackup, drills
 }

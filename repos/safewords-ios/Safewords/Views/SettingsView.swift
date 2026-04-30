@@ -67,7 +67,10 @@ struct SettingsView: View {
                         divider
                         infoRow("Rotate group seed", value: "v1.2")
                         divider
-                        infoRow("Back up seed phrase", value: "Use recovery code")
+                        actionRow("Back up seed phrase", value: group == nil ? "No group" : "24 words") {
+                            screen = .recoveryBackup
+                        }
+                        .disabled(group == nil)
                     }
 
                     section(label: "Practice") {
