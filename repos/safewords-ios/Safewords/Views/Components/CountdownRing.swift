@@ -10,50 +10,95 @@ struct CountdownRing<Content: View>: View {
     var body: some View {
         GeometryReader { geo in
             let size = min(geo.size.width, geo.size.height)
-            let r = size / 2 - 12
-            let cx = size / 2
-            let cy = size / 2
+            let radius = size / 2 - 12
+            let center = CGPoint(x: size / 2, y: size / 2)
 
-            ZStack {
-                // 60 ticks
-                ForEach(0..<60, id: \.self) { i in
-                    let big = i % 5 == 0
-                    let a = Double(i) / 60.0 * 2 * .pi - .pi / 2
-                    let r1 = r - (big ? 6 : 3)
-                    let r2 = r + (big ? 2 : 0)
-                    let elapsed = Double(i) / 60.0 < progress
-                    Path { p in
-                        p.move(to: CGPoint(x: cx + cos(a) * r1, y: cy + sin(a) * r1))
-                        p.addLine(to: CGPoint(x: cx + cos(a) * r2, y: cy + sin(a) * r2))
-                    }
-                    .stroke(
-                        Ink.fgFaint.opacity(elapsed ? 0.9 : 0.25),
-                        style: StrokeStyle(lineWidth: big ? 1 : 0.6, lineCap: .round)
-                    )
-                }
-
-                // Progress arc
-                Circle()
-                    .trim(from: 0, to: CGFloat(min(max(progress, 0), 1)))
-                    .stroke(Ink.accent, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .frame(width: r * 2, height: r * 2)
-                    .position(x: cx, y: cy)
-
-                // Knob
-                let angle = progress * 2 * .pi - .pi / 2
-                Circle()
-                    .fill(Ink.accent)
-                    .frame(width: 10, height: 10)
-                    .position(x: cx + cos(angle) * r, y: cy + sin(angle) * r)
-                Circle()
-                    .stroke(Ink.accent.opacity(0.25), lineWidth: 1)
-                    .frame(width: 16, height: 16)
-                    .position(x: cx + cos(angle) * r, y: cy + sin(angle) * r)
-
-                content()
-            }
+            ring(radius: radius, center: center)
         }
+    }
+
+    private var clampedProgress: Double {
+        min(max(progress, 0), 1)
+    }
+
+    private func ring(radius: CGFloat, center: CGPoint) -> some View {
+        ZStack {
+            ForEach(0..<60, id: \.self) { index in
+                CountdownTick(index: index, progress: clampedProgress, radius: radius, center: center)
+            }
+
+            Circle()
+                .trim(from: 0, to: CGFloat(clampedProgress))
+                .stroke(Ink.accent, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .frame(width: radius * 2, height: radius * 2)
+                .position(x: center.x, y: center.y)
+
+            CountdownKnob(progress: clampedProgress, radius: radius, center: center)
+
+            content()
+        }
+    }
+}
+
+private struct CountdownTick: View {
+    let index: Int
+    let progress: Double
+    let radius: CGFloat
+    let center: CGPoint
+
+    private var isMajor: Bool { index % 5 == 0 }
+    private var angle: Double { Double(index) / 60.0 * 2 * .pi - .pi / 2 }
+    private var innerRadius: CGFloat { radius - (isMajor ? 6.0 : 3.0) }
+    private var outerRadius: CGFloat { radius + (isMajor ? 2.0 : 0.0) }
+    private var elapsed: Bool { Double(index) / 60.0 < progress }
+    private var lineWidth: CGFloat { isMajor ? 1.0 : 0.6 }
+
+    var body: some View {
+        Path { path in
+            path.move(to: point(on: innerRadius))
+            path.addLine(to: point(on: outerRadius))
+        }
+        .stroke(
+            Ink.fgFaint.opacity(elapsed ? 0.9 : 0.25),
+            style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+        )
+    }
+
+    private func point(on radius: CGFloat) -> CGPoint {
+        CGPoint(
+            x: center.x + CGFloat(cos(angle)) * radius,
+            y: center.y + CGFloat(sin(angle)) * radius
+        )
+    }
+}
+
+private struct CountdownKnob: View {
+    let progress: Double
+    let radius: CGFloat
+    let center: CGPoint
+
+    private var angle: Double {
+        progress * 2 * .pi - .pi / 2
+    }
+
+    private var position: CGPoint {
+        CGPoint(
+            x: center.x + CGFloat(cos(angle)) * radius,
+            y: center.y + CGFloat(sin(angle)) * radius
+        )
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Ink.accent.opacity(0.25), lineWidth: 1)
+                .frame(width: 16, height: 16)
+            Circle()
+                .fill(Ink.accent)
+                .frame(width: 10, height: 10)
+        }
+        .position(x: position.x, y: position.y)
     }
 }
 

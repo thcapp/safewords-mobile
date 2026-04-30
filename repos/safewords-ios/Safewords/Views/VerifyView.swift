@@ -16,7 +16,7 @@ struct VerifyView: View {
             VStack(alignment: .leading, spacing: 0) {
                 header.padding(.horizontal, 20).padding(.top, 62)
 
-                Group {
+                SwiftUI.Group {
                     if groupStore.selectedGroup == nil {
                         noGroupPanel
                     } else {

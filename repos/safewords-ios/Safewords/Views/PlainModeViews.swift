@@ -574,7 +574,7 @@ struct PlainRoot: View {
             PlainOnboardingView()
         } else {
             ZStack(alignment: .bottom) {
-                Group {
+                SwiftUI.Group {
                     switch screen {
                     case .home: PlainHomeView(onCall: { screen = .verify })
                     case .verify: PlainVerifyView()

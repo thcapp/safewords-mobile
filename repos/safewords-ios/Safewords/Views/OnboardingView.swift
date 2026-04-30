@@ -23,7 +23,7 @@ struct OnboardingView: View {
                 progress
                     .padding(.bottom, 32)
 
-                Group {
+                SwiftUI.Group {
                     switch flow {
                     case .welcome: panelWelcome
                     case .start: panelStart

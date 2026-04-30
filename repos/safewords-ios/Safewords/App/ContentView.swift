@@ -26,7 +26,7 @@ struct ContentView: View {
         ZStack(alignment: .bottom) {
             Ink.bg.ignoresSafeArea()
 
-            Group {
+            SwiftUI.Group {
                 if !onboarded && groupStore.groups.isEmpty && screen != .qrScanner && screen != .recoveryPhrase {
                     OnboardingView(screen: $screen)
                         .onChange(of: screen) { _, new in
