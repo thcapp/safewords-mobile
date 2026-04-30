@@ -1,0 +1,13 @@
+Safewords helps families and trusted groups verify identity during suspicious calls, texts, or video chats.
+
+Instead of trusting a voice, phone number, account, or profile picture that can be spoofed, your group shares a rotating safeword. If someone asks for money, account access, travel help, or any urgent action, ask for the current safeword before you trust the request.
+
+What Safewords does:
+
+- Creates private trust groups on your device
+- Rotates each group's safeword automatically
+- Lets another device join with a QR invite
+- Offers a high-visibility mode for stressful calls
+- Keeps everything local with no account, analytics, ads, or tracking
+
+Safewords is a safety layer, not a replacement for common sense or emergency services. If something feels wrong, hang up and call the person back on a number you already trust.

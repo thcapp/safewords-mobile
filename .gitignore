@@ -30,3 +30,10 @@ repos/safewords-android/.idea/
 # OS
 .DS_Store
 Thumbs.db
+
+
+# App Store Connect credentials - never commit
+output/app-store/AuthKey*.p8
+output/app-store/AuthKey*.base64.txt
+output/app-store/credentials.json
+output/play-store/v2/play-service-account.json

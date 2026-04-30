@@ -1,0 +1,3 @@
+app_identifier("app.thc.safewords")
+
+team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]

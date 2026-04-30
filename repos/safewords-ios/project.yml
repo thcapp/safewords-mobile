@@ -32,11 +32,13 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.thc.safewords
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_VALUES:
           CFBundleDisplayName: Safewords
           CFBundleShortVersionString: "1.1.0"
           CFBundleVersion: "3"
           AppIdentifierPrefix: "$(AppIdentifierPrefix)"
+          ITSAppUsesNonExemptEncryption: false
           UILaunchScreen: {}
           UISupportedInterfaceOrientations:
             - UIInterfaceOrientationPortrait
@@ -72,6 +74,7 @@ targets:
           CFBundleShortVersionString: "1.1.0"
           CFBundleVersion: "3"
           AppIdentifierPrefix: "$(AppIdentifierPrefix)"
+          ITSAppUsesNonExemptEncryption: false
           NSExtension:
             NSExtensionPointIdentifier: com.apple.widgetkit-extension
         CODE_SIGN_ENTITLEMENTS: SafewordsWidget/SafewordsWidget.entitlements
@@ -97,6 +100,21 @@ targets:
     dependencies:
       - target: Safewords
 
+  # UI Test Target for future fastlane snapshot runs
+  SafewordsUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: SafewordsUITests
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.thc.safewords.uitests
+        TEST_TARGET_NAME: Safewords
+    dependencies:
+      - target: Safewords
+
 schemes:
   Safewords:
     build:
@@ -110,6 +128,7 @@ schemes:
       config: Debug
       targets:
         - SafewordsTests
+        - SafewordsUITests
     profile:
       config: Release
     analyze:

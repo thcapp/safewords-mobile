@@ -1,0 +1,1 @@
+Safewords requires no account and no network service. To review the main flow, open the app, create a local group, then use the generated rotating word on the Home and Verify screens. Camera permission is only needed for QR join.
