@@ -339,4 +339,43 @@ platform :ios do
     UI.success("App Store Connect API key can access #{app.name} (#{APP_IDENTIFIER})")
     UI.message("Home screen display name remains Safewords; App Store listing name is #{APP_STORE_NAME}.")
   end
+  desc "Diagnose bundle ID capabilities at Apple Developer Portal"
+  lane :diag_caps do
+    require "spaceship"
+    require "base64"
+    require "json"
+
+    key_id = ENV["APP_STORE_CONNECT_API_KEY_ID"]
+    issuer_id = ENV["APP_STORE_CONNECT_API_ISSUER_ID"]
+    raw_path = ENV["APP_STORE_CONNECT_API_KEY_PATH"].to_s
+
+    pem =
+      if !raw_path.empty? && File.exist?(raw_path)
+        contents = File.read(raw_path)
+        contents.start_with?("{") ? JSON.parse(contents)["key"] : contents
+      else
+        Base64.decode64(ENV["APP_STORE_CONNECT_API_KEY_BASE64"].to_s)
+      end
+
+    token = Spaceship::ConnectAPI::Token.create(
+      key_id: key_id, issuer_id: issuer_id, key: pem,
+      duration: 1200, in_house: false
+    )
+    Spaceship::ConnectAPI.token = token
+
+    APP_IDENTIFIERS.each do |bundle|
+      puts "==="
+      puts "BundleID: #{bundle}"
+      bid = Spaceship::ConnectAPI::BundleId.find(bundle)
+      if bid.nil?
+        puts "  NOT FOUND"
+        next
+      end
+      caps = bid.get_capabilities
+      caps.each do |cap|
+        puts "  capability: #{cap.capability_type} settings=#{cap.settings.inspect}"
+      end
+    end
+  end
+
 end
