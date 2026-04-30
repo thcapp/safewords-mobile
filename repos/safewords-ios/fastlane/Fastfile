@@ -348,7 +348,7 @@ platform :ios do
 
     # Bundle ID capability dump — diagnose App Groups assignment
     UI.message("=" * 70)
-    UI.message("DIAGNOSTIC: Bundle ID capabilities at Developer Portal")
+    UI.message("DIAGNOSTIC: Bundle ID capabilities + linked App Groups")
     UI.message("=" * 70)
     APP_IDENTIFIERS.each do |bundle|
       UI.message("--- #{bundle} ---")
@@ -357,30 +357,34 @@ platform :ios do
         UI.error("  NOT FOUND on Apple's portal")
         next
       end
+      UI.message("  bundle_id record_id: #{bid.id}")
+
+      # Capabilities
       caps = bid.get_capabilities
       if caps.empty?
         UI.error("  NO CAPABILITIES enabled")
       else
         caps.each do |c|
           UI.message("  capability: #{c.capability_type}")
-          if c.capability_type =~ /APP_GROUPS/i
-            settings = c.settings || []
-            settings.each do |s|
-              UI.message("    setting: #{s.inspect}")
-            end
-          end
         end
       end
-    end
-    UI.message("=" * 70)
-    UI.message("App Groups identifier check:")
-    begin
-      groups = Spaceship::ConnectAPI.get_app_groups
-      groups.to_a.each do |g|
-        UI.message("  group: identifier=#{g.identifier} name=#{g.name}")
+
+      # Linked App Groups — via the relationship endpoint, NOT via capabilities
+      begin
+        path = "bundleIds/#{bid.id}/appGroups"
+        resp = Spaceship::ConnectAPI.get(path).body
+        groups = resp["data"] || []
+        if groups.empty?
+          UI.error("  ⚠️  NO APP GROUPS LINKED to this Bundle ID")
+        else
+          groups.each do |g|
+            attrs = g["attributes"] || {}
+            UI.message("  ✓  linked group: identifier=#{attrs["identifier"]} name=#{attrs["name"]}")
+          end
+        end
+      rescue => e
+        UI.error("  Could not query linked groups: #{e.class}: #{e.message}")
       end
-    rescue => e
-      UI.error("  Could not list App Groups: #{e.message}")
     end
     UI.message("=" * 70)
   end
