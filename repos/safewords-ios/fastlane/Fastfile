@@ -201,6 +201,39 @@ platform :ios do
     sync_appstore_profiles(readonly: true)
     configure_code_signing!
 
+    # Diagnostic: dump entitlements of every installed provisioning profile so
+    # we can confirm App Groups (and others) actually made it onto disk.
+    if ENV["CI"] == "true"
+      profiles_dir = File.expand_path("~/Library/MobileDevice/Provisioning Profiles")
+      UI.message("=" * 70)
+      UI.message("Installed provisioning profiles + entitlements:")
+      UI.message("=" * 70)
+      Dir.glob(File.join(profiles_dir, "*.mobileprovision")).each do |path|
+        UI.message("--- #{File.basename(path)} ---")
+        begin
+          plist = `security cms -D -i "#{path}" 2>/dev/null`
+          name_match = plist.match(/<key>Name<\/key>\s*<string>([^<]+)<\/string>/)
+          UI.message("  Name: #{name_match[1]}") if name_match
+          uuid_match = plist.match(/<key>UUID<\/key>\s*<string>([^<]+)<\/string>/)
+          UI.message("  UUID: #{uuid_match[1]}") if uuid_match
+          ent_match = plist.match(/<key>Entitlements<\/key>\s*<dict>(.*?)<\/dict>/m)
+          if ent_match
+            UI.message("  Entitlements:")
+            ent_match[1].scan(/<key>([^<]+)<\/key>\s*(?:<string>([^<]*)<\/string>|<array>(.*?)<\/array>|<true\/>|<false\/>)/m).each do |k, str, arr|
+              if arr
+                arr.scan(/<string>([^<]+)<\/string>/).each { |s| UI.message("    #{k}: #{s[0]}") }
+              else
+                UI.message("    #{k}: #{str || '(bool)'}")
+              end
+            end
+          end
+        rescue => e
+          UI.error("  could not parse: #{e.message}")
+        end
+      end
+      UI.message("=" * 70)
+    end
+
     sh("mkdir -p #{OUTPUT_DIR}")
     build_app(
       project: PROJECT_PATH,
