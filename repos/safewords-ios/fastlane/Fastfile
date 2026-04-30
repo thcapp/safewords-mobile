@@ -105,6 +105,16 @@ end
 def sync_appstore_profiles(readonly:)
   ensure_match_env!
   setup_ci if ENV["CI"] == "true"
+
+  # GitHub Actions' actions/checkout@v4 sets a global http.extraheader with
+  # GITHUB_TOKEN. That token is scoped to the current repo only and cannot
+  # clone the private certs repo, so it overrides match's own auth and breaks
+  # the clone with "could not read Username". Strip it before match runs.
+  if ENV["CI"] == "true"
+    sh("git config --global --unset-all http.https://github.com/.extraheader || true")
+    sh("git config --global --remove-section http.https://github.com/ || true")
+  end
+
   match(
     type: "appstore",
     app_identifier: APP_IDENTIFIERS,
