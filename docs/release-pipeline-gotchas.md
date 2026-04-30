@@ -409,6 +409,103 @@ in the foreground — block other work.
 
 ---
 
+### Apple altool validation (post-build, pre-TestFlight)
+
+After IPA archive succeeds and signing succeeds, fastlane invokes `altool`
+which runs Apple-side validation. Common rejections, all of which we hit:
+
+- **iOS 26 SDK required** (since late 2026) — Xcode 16.4 ships iOS 18.5
+  SDK; Apple wants Xcode 26+. GitHub `macos-latest` has Xcode 26.x installed
+  but the `xcode-select -s /Applications/Xcode.app` step picks the older
+  symlinked default. Fix: select the highest `Xcode_*.app` from the Fastfile:
+  ```ruby
+  xcode_apps = Dir.glob("/Applications/Xcode_*.app").sort_by do |path|
+    File.basename(path).gsub("Xcode_", "").gsub(".app", "").split(".").map(&:to_i)
+  end
+  sh("sudo xcode-select -s '#{xcode_apps.last}/Contents/Developer'")
+  ```
+- **Orientations missing for iPad multitasking** — even with iPhone-only
+  intent, if `TARGETED_DEVICE_FAMILY=1,2`, validation requires all four
+  `UISupportedInterfaceOrientations`. Provide them explicitly.
+- **`UILaunchScreen` empty dict** — Apple wants at least empty
+  `UIColorName` and `UIImageName` keys present.
+- **Widget `NSExtensionPointIdentifier`** — must be inside `NSExtension`
+  dict with value `com.apple.widgetkit-extension` for WidgetKit extensions.
+
+### xcodegen `INFOPLIST_VALUES` doesn't reliably propagate nested values
+
+YAML like:
+```yaml
+INFOPLIST_VALUES:
+  UISupportedInterfaceOrientations:
+    - UIInterfaceOrientationPortrait
+    - ...
+  NSExtension:
+    NSExtensionPointIdentifier: com.apple.widgetkit-extension
+```
+
+translates to build-setting-style entries that don't always reach the final
+Info.plist for arrays and nested dicts. **Use explicit Info.plist files**
+referenced via `INFOPLIST_FILE: <path>` and `GENERATE_INFOPLIST_FILE: "NO"`.
+Plain `INFOPLIST_VALUES` is fine for flat scalar values.
+
+### Spaceship `OpenSSL::PKey::ECError: invalid curve name`
+
+`fastlane`'s `app_store_connect_api_key` action initializes a
+`Spaceship::ConnectAPI::Token` which calls `OpenSSL::PKey::EC.new(pem)`.
+On macos-arm64 runners with current OpenSSL, this fails with "invalid
+curve name" for the ES256 (`prime256v1`) keys Apple uses. Bug:
+[fastlane/fastlane#20593](https://github.com/fastlane/fastlane/issues/20593).
+
+**Workaround:** bypass the action; pass `api_key_path:` directly to
+upload actions instead of the Hash from `app_store_connect_api_key()`:
+```ruby
+upload_to_testflight(
+  api_key_path: ENV["APP_STORE_CONNECT_API_KEY_PATH"],  # JSON wrapper
+  ...
+)
+```
+
+The action parses the JSON wrapper itself with a different code path that
+doesn't hit the curve-init bug.
+
+### App Store Connect listing name uniqueness
+
+`Safewords` was already taken on the App Store. We use
+`Safewords - Verify Identity` as the listing name, with
+`CFBundleDisplayName=Safewords` so the home-screen icon still shows
+"Safewords" (the listing name and on-device label are independent).
+
+### Apple Portal App Group capability checkbox ≠ actually configured
+
+Apple's Developer Portal has a UX trap. The App Groups capability
+checkbox on an App ID can show as checked, but the `bundleIdCapabilities`
+total via App Store Connect API will be zero. The capability is only
+"actually configured" once you also:
+
+1. Click **Configure** on the App Groups row
+2. Check the specific group identifier in the modal
+3. Click **Continue**
+4. Click **Save** at the top of the App ID page (most-missed click)
+
+Profiles only include App Groups entitlement when steps 1-4 all complete.
+
+### match readonly mode with stale profiles
+
+If you make a capability change at Apple's portal AFTER match has already
+run, the encrypted profiles in the certs repo are stale. Match in
+`readonly: true` (build mode) does NOT re-fetch from Apple. Solutions:
+
+1. Delete the encrypted profile files from the certs repo, force regen:
+   ```bash
+   git rm profiles/appstore/*.mobileprovision
+   git push
+   fastlane match_setup  # force=true regenerates from Apple
+   ```
+2. Or use `match` with `force: true` explicitly in the setup lane.
+
+We do this automatically in setup mode (`force: !readonly`).
+
 ## Iteration history (this session)
 
 iOS pipeline took **8 iterations** to reach a working `match_setup` lane:
