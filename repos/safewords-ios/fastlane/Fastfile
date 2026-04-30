@@ -133,24 +133,24 @@ def sync_appstore_profiles(readonly:)
     ENV["MATCH_GIT_BASIC_AUTHORIZATION"] = nil
     ENV["GIT_CONFIG_PARAMETERS"] = "'credential.helper='"
     ENV["GIT_TERMINAL_PROMPT"] = "0"
-
-    # We construct an api_key Hash and pass it explicitly to match. The
-    # workflow also sets APP_STORE_CONNECT_API_KEY_PATH; match's internal
-    # cert sub-action picks up BOTH and errors with
-    # "Unresolved conflict between options: 'api_key_path' and 'api_key'".
-    # Clear the env path so api_key (Hash) is the only source.
-    ENV["APP_STORE_CONNECT_API_KEY_PATH"] = nil
   end
 
-  match(
+  match_args = {
     type: "appstore",
     app_identifier: APP_IDENTIFIERS,
-    api_key: asc_api_key,
     team_id: apple_team_id,
     git_url: url,
     readonly: readonly,
     storage_mode: "git"
-  )
+  }
+  # In CI, the Materialize step writes the .p8 to APP_STORE_CONNECT_API_KEY_PATH
+  # and clears the base64 env. Let match auto-detect the path; passing api_key
+  # explicitly here would conflict with the path env in match's cert sub-action.
+  # Locally, fall through to the explicit api_key Hash.
+  if ENV["CI"] != "true" || ENV["APP_STORE_CONNECT_API_KEY_PATH"].to_s.empty?
+    match_args[:api_key] = asc_api_key
+  end
+  match(**match_args)
 end
 
 def configure_code_signing!
