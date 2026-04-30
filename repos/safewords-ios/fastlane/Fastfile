@@ -317,14 +317,18 @@ platform :ios do
     key_id = ENV["APP_STORE_CONNECT_API_KEY_ID"] || credential_value("key_id")
     issuer_id = ENV["APP_STORE_CONNECT_API_ISSUER_ID"] || credential_value("issuer_id")
     key_base64 = ENV["APP_STORE_CONNECT_API_KEY_BASE64"].to_s
-    key_path = absolute_path(ENV["APP_STORE_CONNECT_API_KEY_PATH"] || credential_value("key_filepath") || LOCAL_KEY_PATH)
+    raw_path = ENV["APP_STORE_CONNECT_API_KEY_PATH"].to_s
+    key_path = absolute_path(raw_path.empty? ? (credential_value("key_filepath") || LOCAL_KEY_PATH) : raw_path)
 
     pem_text =
       if key_base64.length.positive?
         Base64.decode64(key_base64)
+      elsif !key_path.to_s.empty? && File.exist?(key_path)
+        contents = File.read(key_path)
+        # Path may already be a JSON wrapper (workflow Materialize step)
+        contents.start_with?("{") ? JSON.parse(contents)["key"] : contents
       else
-        UI.user_error!("App Store Connect API key file not found at #{key_path}") unless File.exist?(key_path)
-        File.read(key_path)
+        UI.user_error!("No App Store Connect API key available")
       end
 
     token = Spaceship::ConnectAPI::Token.create(
@@ -341,6 +345,44 @@ platform :ios do
 
     UI.success("App Store Connect API key can access #{app.name} (#{APP_IDENTIFIER})")
     UI.message("Home screen display name remains Safewords; App Store listing name is #{APP_STORE_NAME}.")
+
+    # Bundle ID capability dump — diagnose App Groups assignment
+    UI.message("=" * 70)
+    UI.message("DIAGNOSTIC: Bundle ID capabilities at Developer Portal")
+    UI.message("=" * 70)
+    APP_IDENTIFIERS.each do |bundle|
+      UI.message("--- #{bundle} ---")
+      bid = Spaceship::ConnectAPI::BundleId.find(bundle)
+      if bid.nil?
+        UI.error("  NOT FOUND on Apple's portal")
+        next
+      end
+      caps = bid.get_capabilities
+      if caps.empty?
+        UI.error("  NO CAPABILITIES enabled")
+      else
+        caps.each do |c|
+          UI.message("  capability: #{c.capability_type}")
+          if c.capability_type =~ /APP_GROUPS/i
+            settings = c.settings || []
+            settings.each do |s|
+              UI.message("    setting: #{s.inspect}")
+            end
+          end
+        end
+      end
+    end
+    UI.message("=" * 70)
+    UI.message("App Groups identifier check:")
+    begin
+      groups = Spaceship::ConnectAPI.get_app_groups
+      groups.to_a.each do |g|
+        UI.message("  group: identifier=#{g.identifier} name=#{g.name}")
+      end
+    rescue => e
+      UI.error("  Could not list App Groups: #{e.message}")
+    end
+    UI.message("=" * 70)
   end
   desc "Diagnose bundle ID capabilities at Apple Developer Portal"
   lane :diag_caps do
