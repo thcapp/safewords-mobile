@@ -120,7 +120,13 @@ def sync_appstore_profiles(readonly:)
     end
     sh("git config --global --unset-all http.https://github.com/.extraheader || true")
     sh("git config --global --remove-section http.https://github.com/ 2>/dev/null || true")
+    sh("git config --global --unset-all credential.helper || true")
     ENV["MATCH_GIT_BASIC_AUTHORIZATION"] = nil
+    # Force git to ignore any credential helpers and trust the URL-embedded
+    # credentials only. Without this, GitHub Actions runners' default helper
+    # consumes the URL creds and falls back to the username prompt.
+    ENV["GIT_CONFIG_PARAMETERS"] = "'credential.helper='"
+    ENV["GIT_TERMINAL_PROMPT"] = "0"
   end
 
   match(
