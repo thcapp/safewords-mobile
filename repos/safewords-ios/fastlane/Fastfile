@@ -107,24 +107,30 @@ def sync_appstore_profiles(readonly:)
   setup_ci if ENV["CI"] == "true"
 
   # GitHub Actions' actions/checkout@v4 sets a global http.extraheader with
-  # GITHUB_TOKEN scoped to the current repo only. We also can't reliably
-  # combine MATCH_GIT_BASIC_AUTHORIZATION with our private certs repo on
-  # this org. Solution: rebuild the certs URL with x-access-token credentials
-  # embedded, and clear all extraheader / basic-auth state so match makes
-  # one clean clone with the embedded creds.
+  # GITHUB_TOKEN scoped to the current repo only. Combining that with
+  # MATCH_GIT_BASIC_AUTHORIZATION causes git's credential resolution to fall
+  # back to the username prompt and fail. Embed credentials in the URL
+  # directly, and clear all conflicting auth state.
   url = ENV["MATCH_GIT_URL"].to_s
-  token = ENV["MATCH_GIT_TOKEN"].to_s
   if ENV["CI"] == "true"
+    # MATCH_GIT_BASIC_AUTHORIZATION is base64("thcllc:TOKEN"). Decode and
+    # extract the TOKEN to embed in the URL as x-access-token credentials.
+    require "base64"
+    basic = ENV["MATCH_GIT_BASIC_AUTHORIZATION"].to_s
+    token = ""
+    if !basic.empty?
+      decoded = Base64.decode64(basic)
+      token = decoded.split(":", 2).last.to_s.strip
+    end
+
     if !token.empty? && url.start_with?("https://github.com/")
       url = url.sub("https://github.com/", "https://x-access-token:#{token}@github.com/")
     end
+
     sh("git config --global --unset-all http.https://github.com/.extraheader || true")
     sh("git config --global --remove-section http.https://github.com/ 2>/dev/null || true")
     sh("git config --global --unset-all credential.helper || true")
     ENV["MATCH_GIT_BASIC_AUTHORIZATION"] = nil
-    # Force git to ignore any credential helpers and trust the URL-embedded
-    # credentials only. Without this, GitHub Actions runners' default helper
-    # consumes the URL creds and falls back to the username prompt.
     ENV["GIT_CONFIG_PARAMETERS"] = "'credential.helper='"
     ENV["GIT_TERMINAL_PROMPT"] = "0"
   end
