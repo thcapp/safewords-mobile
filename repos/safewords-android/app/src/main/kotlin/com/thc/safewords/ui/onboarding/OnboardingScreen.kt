@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -26,7 +27,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,24 +57,23 @@ import java.security.SecureRandom
 
 @Composable
 fun OnboardingScreen(
-    onComplete: () -> Unit,
+    onComplete: (createdGroupId: String?) -> Unit,
     onJoinWithQR: () -> Unit,
     onJoinWithRecovery: () -> Unit = {}
 ) {
     var step by remember { mutableIntStateOf(0) }
-    var path by remember { mutableStateOf<String?>(null) } // "create" or "join"
+    var path by remember { mutableStateOf<String?>(null) }
     var groupName by remember { mutableStateOf("") }
     var creatorName by remember { mutableStateOf("") }
-    var seedWords by remember { mutableStateOf<List<String>>(emptyList()) }
-    var seedHex by remember { mutableStateOf<String?>(null) }
     val scrollState = rememberScrollState()
 
     Box(modifier = Modifier.fillMaxSize().background(Ink.bg)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .padding(horizontal = 28.dp)
-                .padding(top = 70.dp, bottom = 40.dp)
+                .padding(top = 24.dp, bottom = 40.dp)
                 .verticalScroll(scrollState)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
@@ -91,7 +90,7 @@ fun OnboardingScreen(
             Spacer(Modifier.height(32.dp))
 
             when (step) {
-                0 -> PanelWelcome()
+                0 -> PanelWelcome(onRestore = onJoinWithRecovery)
                 1 -> PanelStart(
                     onCreate = { path = "create"; step = 2 },
                     onJoin = onJoinWithQR,
@@ -99,18 +98,11 @@ fun OnboardingScreen(
                 )
                 else -> {
                     if (path == "create") {
-                        // Generate seed once, on first render of step 2
-                        if (seedHex == null) {
-                            val (hex, words) = generateSeedAndPhrase()
-                            seedHex = hex
-                            seedWords = words
-                        }
                         PanelCreateForm(
                             groupName = groupName,
                             onGroupNameChange = { groupName = it },
                             creatorName = creatorName,
-                            onCreatorNameChange = { creatorName = it },
-                            seedWords = seedWords
+                            onCreatorNameChange = { creatorName = it }
                         )
                     }
                 }
@@ -127,7 +119,7 @@ fun OnboardingScreen(
                             .clip(CircleShape)
                             .border(0.5.dp, Ink.rule, CircleShape)
                             .clickable {
-                                if (step == 2) { path = null; seedHex = null }
+                                if (step == 2) path = null
                                 step -= 1
                             },
                         contentAlignment = Alignment.Center
@@ -136,8 +128,9 @@ fun OnboardingScreen(
                     }
                 }
                 val ctaEnabled = when (step) {
-                    0, 1 -> true
-                    2 -> path == "create" && groupName.isNotBlank() && creatorName.isNotBlank() && seedHex != null
+                    0 -> true
+                    1 -> false  // user must pick a card
+                    2 -> path == "create" && groupName.isNotBlank() && creatorName.isNotBlank()
                     else -> true
                 }
                 Box(
@@ -148,16 +141,19 @@ fun OnboardingScreen(
                         .clickable(enabled = ctaEnabled) {
                             when (step) {
                                 0 -> step = 1
-                                1 -> { /* user picks card */ }
+                                1 -> Unit
                                 2 -> {
+                                    val seedHex = TOTPDerivation.bytesToHex(
+                                        ByteArray(32).also { SecureRandom().nextBytes(it) }
+                                    )
                                     val created = GroupRepository.createGroup(
                                         name = groupName.trim(),
                                         creatorName = creatorName.trim(),
-                                        seedHex = seedHex!!
+                                        seedHex = seedHex
                                     )
                                     if (created != null) {
                                         GroupRepository.setActiveGroup(created.id)
-                                        onComplete()
+                                        onComplete(created.id)
                                     }
                                 }
                             }
@@ -191,26 +187,8 @@ fun OnboardingScreen(
     }
 }
 
-private fun generateSeedAndPhrase(): Pair<String, List<String>> {
-    val seed = ByteArray(32).also { SecureRandom().nextBytes(it) }
-    val hex = TOTPDerivation.bytesToHex(seed)
-    // Show a 12-word recovery phrase derived from hex chunks for display only.
-    val phrase = hex.chunked(4).take(12).map { chunk ->
-        val n = chunk.toInt(16)
-        BACKUP_WORDS[n % BACKUP_WORDS.size]
-    }
-    return hex to phrase
-}
-
-private val BACKUP_WORDS = listOf(
-    "canyon", "lattice", "ember", "quorum", "ribbon", "slate",
-    "vellum", "obsidian", "patina", "tessera", "umbral", "zephyr",
-    "harbor", "compass", "anchor", "lantern", "rocket", "cipher",
-    "kite", "river", "eagle", "fox", "robin", "pulsar"
-)
-
 @Composable
-private fun PanelWelcome() {
+private fun PanelWelcome(onRestore: () -> Unit) {
     SectionLabel("Safewords · 01")
     Spacer(Modifier.height(28.dp))
 
@@ -226,39 +204,131 @@ private fun PanelWelcome() {
     )
     Spacer(Modifier.height(20.dp))
     Text(
-        "AI can clone any voice in 3 seconds. Your safeword verifies the people who matter — no server, no account, no data collected.",
+        "AI clones voices. Accounts get hijacked. Numbers get swapped. A pre-agreed word is the proof that survives all of it.",
         color = Ink.fgMuted,
-        modifier = Modifier.widthIn(max = 320.dp),
+        modifier = Modifier.widthIn(max = 340.dp),
         style = TextStyle(fontSize = 16.sp, lineHeight = 24.sp)
     )
 
-    Spacer(Modifier.height(40.dp))
+    Spacer(Modifier.height(32.dp))
+
+    // Dialog example — what it looks like in practice
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(Ink.bgElev)
             .border(0.5.dp, Ink.rule, RoundedCornerShape(20.dp))
-            .padding(horizontal = 24.dp, vertical = 28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(horizontal = 20.dp, vertical = 22.dp)
     ) {
-        Text("crimson eagle 47", color = Ink.fgFaint, style = TextStyle(fontSize = 14.sp, letterSpacing = 0.3.sp))
-        Text("silent river 12", color = Ink.fgMuted, style = TextStyle(fontSize = 14.sp, letterSpacing = 0.3.sp))
+        DialogLine(
+            role = "Caller (sounds like your son)",
+            line = "\"Mom, I'm in trouble. I need you to wire money right now.\"",
+            accent = false
+        )
+        Spacer(Modifier.height(12.dp))
+        DialogLine(
+            role = "You",
+            line = "\"What's our word?\"",
+            accent = true
+        )
+        Spacer(Modifier.height(12.dp))
+        DialogLine(
+            role = "Caller",
+            line = "\"I... uh... I don't remember.\"",
+            accent = false
+        )
+        Spacer(Modifier.height(16.dp))
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(Ink.tickFill)
-                .padding(horizontal = 12.dp, vertical = 4.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(Ink.bgInset)
+                .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            Text(
-                "violet anchor 88",
-                color = Ink.accent,
-                style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.3.sp)
-            )
+            val outcome = buildAnnotatedString {
+                withStyle(SpanStyle(color = Ink.fg, fontWeight = FontWeight.SemiBold)) {
+                    append("Hang up.")
+                }
+                append(" A real person would know.")
+            }
+            Text(outcome, color = Ink.fgMuted, style = TextStyle(fontSize = 13.sp, lineHeight = 19.sp))
         }
-        Text("bronze kite 34", color = Ink.fgMuted, style = TextStyle(fontSize = 14.sp, letterSpacing = 0.3.sp))
-        Text("silver fox 55", color = Ink.fgFaint, style = TextStyle(fontSize = 14.sp, letterSpacing = 0.3.sp))
+    }
+
+    Spacer(Modifier.height(20.dp))
+
+    // Trust pill — FBI / FTC / AARP recommendation
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Ink.bgElev.copy(alpha = 0.6f))
+            .border(0.5.dp, Ink.rule, RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Text(
+            "Recommended by the FBI, FTC, and AARP for families and trust groups.",
+            color = Ink.fgMuted,
+            style = TextStyle(fontSize = 12.sp, lineHeight = 18.sp, letterSpacing = 0.1.sp),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+
+    Spacer(Modifier.height(18.dp))
+    // Restore link — for users coming back after reinstall
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onRestore)
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            "I already have a backup — restore it",
+            color = Ink.accent,
+            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun DialogLine(role: String, line: String, accent: Boolean) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 14.dp)
+            .border(
+                width = 0.dp,
+                color = Color.Transparent,
+                shape = RoundedCornerShape(0.dp)
+            )
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 4.dp, end = 12.dp)
+                    .width(3.dp)
+                    .height(if (accent) 44.dp else 36.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(if (accent) Ink.accent else Ink.rule)
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    role.uppercase(),
+                    color = if (accent) Ink.accent else Ink.fgFaint,
+                    style = TextStyle(fontSize = 9.5.sp, letterSpacing = 1.0.sp, fontWeight = FontWeight.SemiBold)
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    line,
+                    color = if (accent) Ink.fg else Ink.fgMuted,
+                    style = TextStyle(fontSize = 14.sp, lineHeight = 20.sp)
+                )
+            }
+        }
     }
 }
 
@@ -275,7 +345,7 @@ private fun PanelStart(onCreate: () -> Unit, onJoin: () -> Unit, onRecovery: () 
 
     OnboardOption(
         title = "Create a new group",
-        sub = "Generate a seed. Share via QR in person.",
+        sub = "We'll generate a private key for you. No backup needed yet — share via QR.",
         icon = Icons.Outlined.Add, primary = true, onClick = onCreate
     )
     Spacer(Modifier.height(12.dp))
@@ -286,8 +356,8 @@ private fun PanelStart(onCreate: () -> Unit, onJoin: () -> Unit, onRecovery: () 
     )
     Spacer(Modifier.height(12.dp))
     OnboardOption(
-        title = "Join with a recovery phrase",
-        sub = "Restore an existing seed from backup.",
+        title = "Restore from a backup",
+        sub = "Paste your seed if you saved one earlier.",
         icon = Icons.Outlined.Refresh, onClick = onRecovery
     )
 
@@ -345,80 +415,26 @@ private fun PanelCreateForm(
     groupName: String,
     onGroupNameChange: (String) -> Unit,
     creatorName: String,
-    onCreatorNameChange: (String) -> Unit,
-    seedWords: List<String>
+    onCreatorNameChange: (String) -> Unit
 ) {
     SectionLabel("Create · 03")
     Spacer(Modifier.height(28.dp))
     Text(
-        "Name your group.",
+        "Almost done.",
         color = Ink.fg,
         style = TextStyle(fontSize = 36.sp, letterSpacing = (-1.2).sp, lineHeight = 40.sp)
     )
     Spacer(Modifier.height(10.dp))
     Text(
-        "Pick a name your family will recognize. The seed below is your only way to recover this group.",
+        "Pick a name your family will recognize. We'll generate a private key for you — you can back it up later in Settings.",
         color = Ink.fgMuted,
         style = TextStyle(fontSize = 15.sp, lineHeight = 22.sp)
     )
 
-    Spacer(Modifier.height(20.dp))
+    Spacer(Modifier.height(24.dp))
     LabeledField("Group name", groupName, onGroupNameChange, placeholder = "Johnson Family")
     Spacer(Modifier.height(14.dp))
     LabeledField("Your name", creatorName, onCreatorNameChange, placeholder = "Alex")
-
-    Spacer(Modifier.height(24.dp))
-    SectionLabel("Backup phrase")
-    Spacer(Modifier.height(8.dp))
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(Ink.bgElev)
-            .border(0.5.dp, Ink.rule, RoundedCornerShape(20.dp))
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        seedWords.chunked(3).forEachIndexed { rowIdx, rowWords ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                rowWords.forEachIndexed { colIdx, w ->
-                    val idx = rowIdx * 3 + colIdx + 1
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "%02d".format(idx),
-                            color = Ink.fgFaint,
-                            style = TextStyle(fontSize = 10.sp),
-                            modifier = Modifier.width(20.dp)
-                        )
-                        Text(
-                            w,
-                            color = Ink.fg,
-                            style = TextStyle(fontSize = 13.sp, letterSpacing = 0.2.sp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-    Spacer(Modifier.height(16.dp))
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Ink.tickFill)
-            .padding(14.dp)
-    ) {
-        Icon(Icons.Outlined.Warning, null, tint = Ink.accent, modifier = Modifier.size(16.dp).padding(top = 1.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(
-            "Anyone with this seed can see your group's safewords. Write it down somewhere safe.",
-            color = Ink.accent,
-            style = TextStyle(fontSize = 12.5.sp, lineHeight = 18.sp)
-        )
-    }
 }
 
 @Composable
@@ -449,13 +465,7 @@ private fun LabeledField(
             textStyle = TextStyle(fontSize = 17.sp, color = Ink.fg),
             cursorBrush = SolidColor(Ink.accent),
             decorationBox = { inner ->
-                if (value.isEmpty()) {
-                    Text(
-                        placeholder,
-                        color = Ink.fgFaint,
-                        style = TextStyle(fontSize = 17.sp)
-                    )
-                }
+                if (value.isEmpty()) Text(placeholder, color = Ink.fgFaint, style = TextStyle(fontSize = 17.sp))
                 inner()
             }
         )

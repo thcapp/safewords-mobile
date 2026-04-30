@@ -1,0 +1,29 @@
+# Build outputs
+/build
+/app/build
+/widget/build
+/.gradle
+/.idea
+local.properties
+*.iml
+*.hprof
+
+# Native
+.cxx/
+
+# Captures
+captures/
+
+# Signing — never commit
+*.jks
+*.keystore
+keystore.properties
+safewords.properties
+
+# Play Developer API credentials
+fastlane/play-service-account.json
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+fastlane/.env

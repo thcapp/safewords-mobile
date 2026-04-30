@@ -1,0 +1,162 @@
+default_platform(:android)
+
+# ───────────────────────────────────────────────────────────────────
+# Safewords release pipeline
+#
+# Driven by claude after the user explicitly delegated release pushing
+# on 2026-04-29. The Play Console GUI is fragile (silent rejections,
+# ambiguous errors); the supply API is the load-bearing path.
+#
+# Common lanes:
+#   fastlane build           - bundleRelease, output AAB to ../../../output/play-store/v2/
+#   fastlane internal        - build + push to internal testing
+#   fastlane closed          - build + push to closed testing (alpha)
+#   fastlane production      - build + push to production (with confirm)
+#   fastlane promote_to_prod - promote latest internal release to production
+#   fastlane metadata        - push listing copy + screenshots only, no AAB
+#   fastlane validate        - dry-run upload, useful for pre-release sanity
+# ───────────────────────────────────────────────────────────────────
+
+OUTPUT_DIR = File.expand_path("../../../output/play-store/v2", __dir__)
+AAB_PATH = "#{OUTPUT_DIR}/app-release.aab"
+
+# Read keystore creds from ~/.gradle/safewords.properties on the build host.
+# Don't put them in version control.
+def keystore_env
+  {
+    "SAFEWORDS_KEYSTORE_PATH"     => "#{ENV['HOME']}/keystores/safewords-release.jks",
+    "SAFEWORDS_KEYSTORE_PASSWORD" => ENV["SAFEWORDS_KEYSTORE_PASSWORD"] || `cat #{ENV['HOME']}/keystores/safewords-release.password 2>/dev/null`.strip,
+    "SAFEWORDS_KEY_ALIAS"         => "safewords",
+    "SAFEWORDS_KEY_PASSWORD"      => ENV["SAFEWORDS_KEY_PASSWORD"] || `cat #{ENV['HOME']}/keystores/safewords-release.password 2>/dev/null`.strip,
+  }
+end
+
+platform :android do
+
+  desc "Build a signed release AAB and stage it in the play-store output directory"
+  lane :build do
+    sh("cd .. && ./gradlew clean :app:bundleRelease", env: keystore_env)
+    sh("mkdir -p #{OUTPUT_DIR}")
+    sh("cp ../app/build/outputs/bundle/release/app-release.aab #{OUTPUT_DIR}/")
+
+    # Stamp a versioned copy too so we keep history
+    version_name = sh("cd .. && ./gradlew :app:properties -q 2>/dev/null | awk -F': ' '/^android.defaultConfig.versionName:/{print $2}'").strip
+    if !version_name.empty?
+      sh("cp #{OUTPUT_DIR}/app-release.aab #{OUTPUT_DIR}/safewords-#{version_name}.aab")
+    end
+    UI.success("Built AAB at #{AAB_PATH}")
+  end
+
+  desc "Build + push to internal testing track (bundles AAB + metadata + listing assets)"
+  lane :internal do
+    build
+    upload_to_play_store(
+      track: "internal",
+      aab: AAB_PATH,
+      release_status: "draft",
+      skip_upload_apk: true,
+      skip_upload_metadata: false,
+      skip_upload_changelogs: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false,
+      validate_only: false,
+    )
+    UI.success("v#{current_version} + listing metadata pushed to internal testing as DRAFT")
+  end
+
+  desc "Build + push to closed testing (alpha)"
+  lane :closed do
+    build
+    upload_to_play_store(
+      track: "alpha",
+      aab: AAB_PATH,
+      release_status: "completed",
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+    UI.success("v#{current_version} pushed to closed testing")
+  end
+
+  desc "Build + push to production (CONFIRMS first)"
+  lane :production do
+    UI.important("ABOUT TO PUSH TO PRODUCTION. This is user-visible.")
+    confirmed = UI.confirm("Continue?")
+    UI.user_error!("Aborted") unless confirmed
+    build
+    upload_to_play_store(
+      track: "production",
+      aab: AAB_PATH,
+      release_status: "completed",
+      rollout: "0.1", # 10% staged rollout to start, can be raised after
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+    UI.success("v#{current_version} pushed to production at 10% rollout")
+  end
+
+  desc "Promote the latest internal release to production (no rebuild)"
+  lane :promote_to_prod do
+    UI.important("ABOUT TO PROMOTE INTERNAL → PRODUCTION. User-visible.")
+    confirmed = UI.confirm("Continue?")
+    UI.user_error!("Aborted") unless confirmed
+    upload_to_play_store(
+      track: "internal",
+      track_promote_to: "production",
+      release_status: "completed",
+      rollout: "0.1",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+    UI.success("Internal release promoted to production at 10%")
+  end
+
+  desc "Re-capture all phone screenshots from a live emulator and stage them in fastlane/metadata/"
+  lane :screenshots do
+    sh("cd .. && ./gradlew assembleDebug")
+    sh("bash #{__dir__}/screenshot_walkthrough.sh")
+    UI.success("Captured fresh screenshots — push them with `fastlane internal` (next AAB upload bundles them) or `fastlane metadata` once app is past draft state")
+  end
+
+  desc "Push only listing copy + screenshots, no AAB"
+  lane :metadata do
+    upload_to_play_store(
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_changelogs: true,
+      track: "internal",
+      release_status: "draft", # required while the app is in pre-production draft state
+    )
+    UI.success("Listing metadata + assets pushed")
+  end
+
+  desc "Dry-run validation against Play API — confirms credentials + AAB are accepted"
+  lane :validate do
+    upload_to_play_store(
+      track: "internal",
+      aab: AAB_PATH,
+      validate_only: true,
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+    UI.success("Validation passed — credentials work, AAB accepted by Play API")
+  end
+
+  # ─── Helpers ────────────────────────────────────────────────────
+
+  def current_version
+    `cd .. && ./gradlew :app:properties -q 2>/dev/null | awk -F': ' '/^android.defaultConfig.versionName:/{print $2}'`.strip
+  end
+end

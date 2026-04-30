@@ -2,7 +2,6 @@ package com.thc.safewords
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,7 +41,9 @@ import com.thc.safewords.ui.theme.SafewordsTheme
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // We intentionally do NOT call enableEdgeToEdge — every screen would
+        // need its own statusBarsPadding() and right now they don't.
+        // The default behavior keeps content below the status bar.
         setContent {
             SafewordsTheme {
                 BiometricGate(activity = this) {

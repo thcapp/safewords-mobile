@@ -1,0 +1,9 @@
+First public release. Pre-agreed proof of identity for any channel that can be impersonated, hijacked, or cloned. Set one up with the people you trust — family, team, friends, anyone.
+
+- Rotating word every hour / day / week / month
+- QR-based group invites
+- Single-use word generator
+- Emergency override word
+- High Visibility (accessibility) mode
+- Biometric unlock, lock-screen widget, drill mode
+- Zero network, zero account, zero analytics

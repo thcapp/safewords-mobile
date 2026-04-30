@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Safewords — Privacy Policy</title>
+<style>
+  :root { color-scheme: dark; }
+  html,body { margin:0; padding:0; background:#0B0B0C; color:#F5F2EC; font:16px/1.6 -apple-system,Segoe UI,Roboto,sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+  h1 { font-size: 32px; letter-spacing: -0.02em; margin: 0 0 8px; }
+  h2 { font-size: 19px; letter-spacing: -0.01em; margin: 36px 0 8px; color: #E8553A; }
+  p, li { color: rgba(245,242,236,0.85); }
+  small { color: rgba(245,242,236,0.45); }
+  a { color: #E8553A; }
+  .pill { display:inline-block; background:#151517; border:1px solid rgba(245,242,236,0.08); border-radius:999px; padding:4px 12px; font-size:12px; color:rgba(245,242,236,0.7); letter-spacing:0.04em; text-transform:uppercase; }
+  hr { border:0; border-top:1px solid rgba(245,242,236,0.08); margin: 28px 0; }
+</style>
+</head>
+<body>
+<main>
+  <span class="pill">Privacy policy</span>
+  <h1>Safewords</h1>
+  <p><small>Last updated: 28 April 2026</small></p>
+
+  <p>Safewords is a tool that lets a family or trusted group share a rotating "safeword" they can ask each other for during phone calls — to defend against AI voice-cloning scams. The app is designed to work entirely on your device.</p>
+
+  <h2>What we collect</h2>
+  <p><strong>Nothing.</strong> Safewords does not collect, transmit, store, or share any personal information. There is no account, no login, no analytics, no advertising, and no telemetry.</p>
+
+  <h2>What stays on your device</h2>
+  <ul>
+    <li>Your group seeds (used to derive the rotating safeword)</li>
+    <li>Group names and the names you give your circle</li>
+    <li>App preferences (rotation interval, biometric lock, accessibility mode, etc.)</li>
+    <li>Optional emergency override word</li>
+  </ul>
+  <p>Seeds and override words are stored using Android's <em>EncryptedSharedPreferences</em> (hardware-backed where available). Deleting the app removes everything.</p>
+
+  <h2>What we send over the network</h2>
+  <p>Nothing. Safewords makes no network requests. The only time data leaves your device is when <em>you</em> deliberately share it — for example, by displaying a QR code so a family member can scan it, or by sending an SMS invite using your phone's normal messaging app.</p>
+
+  <h2>Permissions</h2>
+  <ul>
+    <li><strong>Camera</strong> — used only when you tap "Scan QR" to join a group. The camera is never used in the background.</li>
+    <li><strong>Biometric</strong> — used only if you turn on "Require biometrics to open" in Settings.</li>
+    <li><strong>SMS</strong> (optional, indirect) — when you tap "Invite via SMS", we open your default SMS app with a prefilled invite. We never send messages on your behalf.</li>
+  </ul>
+
+  <h2>Children</h2>
+  <p>Safewords is suitable for all ages. Because we collect no personal data, there is nothing to disclose under COPPA, GDPR-K, or similar regimes.</p>
+
+  <h2>Third parties</h2>
+  <p>None. Safewords does not embed third-party SDKs for analytics, crash reporting, advertising, or any other purpose.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy ever changes, the "last updated" date above will change. We will not retroactively expand data collection without an explicit, opt-in update.</p>
+
+  <h2>Contact</h2>
+  <p>Questions or concerns: <a href="mailto:mail@theholding.company">mail@theholding.company</a></p>
+
+  <hr>
+  <p><small>Safewords is published by The Holding Company. The full source of the privacy posture above is encoded in the app itself: zero network calls, zero analytics, zero accounts.</small></p>
+</main>
+</body>
+</html>

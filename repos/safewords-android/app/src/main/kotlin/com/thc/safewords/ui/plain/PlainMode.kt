@@ -83,7 +83,10 @@ fun PlainRoot(onExitPlain: () -> Unit = {}) {
     var screen by rememberSaveable { mutableStateOf(PlainScreen.Home) }
     Box(modifier = Modifier.fillMaxSize().background(A11y.bg)) {
         when (screen) {
-            PlainScreen.Home -> PlainHome(onVerify = { screen = PlainScreen.Verify })
+            PlainScreen.Home -> PlainHome(
+                onVerify = { screen = PlainScreen.Verify },
+                onExitPlain = onExitPlain
+            )
             PlainScreen.Verify -> PlainVerify(onDone = { screen = PlainScreen.Home })
             PlainScreen.Help -> PlainHelp(onExitPlain = onExitPlain)
             PlainScreen.Onboarding -> PlainOnboarding(onDone = { screen = PlainScreen.Home })
@@ -180,7 +183,7 @@ private fun BigButton(
 }
 
 @Composable
-private fun PlainHome(onVerify: () -> Unit) {
+private fun PlainHome(onVerify: () -> Unit, onExitPlain: () -> Unit) {
     val groups by GroupRepository.groups.collectAsState()
     val activeId by GroupRepository.activeGroupId.collectAsState()
     val g = groups.firstOrNull { it.id == activeId } ?: groups.firstOrNull()
@@ -209,7 +212,7 @@ private fun PlainHome(onVerify: () -> Unit) {
         // Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp)
         ) {
             Box(
                 modifier = Modifier.size(52.dp).clip(CircleShape).background(A11y.accent),
@@ -222,7 +225,7 @@ private fun PlainHome(onVerify: () -> Unit) {
                 )
             }
             Spacer(Modifier.width(14.dp))
-            Column {
+            Column(Modifier.weight(1f)) {
                 Text(
                     "Your circle",
                     color = A11y.fgMuted,
@@ -233,6 +236,20 @@ private fun PlainHome(onVerify: () -> Unit) {
                     g?.name ?: "Family",
                     color = A11y.fg,
                     style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(A11y.bgElev)
+                    .border(2.dp, A11y.rule, RoundedCornerShape(14.dp))
+                    .clickable(onClick = onExitPlain)
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    "Standard view",
+                    color = A11y.fg,
+                    style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.2.sp)
                 )
             }
         }

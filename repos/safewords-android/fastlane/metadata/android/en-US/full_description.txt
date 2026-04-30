@@ -1,0 +1,58 @@
+A pre-agreed word, shared between people who trust each other, that proves identity when nothing else can.
+
+Voices can be cloned in three seconds. Email accounts get hijacked. Phone numbers get swapped to strangers. Texts arrive from "you" that you didn't send. The attacker who has all of that — the channel, the voice, the writing style, the relationship context — is one shared secret away from being unstoppable. Safewords is that shared secret.
+
+Set one up with anyone you'd take an urgent message from. Family. A team. A partner. A friend. A source. A client. Anyone where "are you really who you say you are?" is a question that could one day matter.
+
+WHEN IT SAVES YOU
+- A voice that sounds exactly like your daughter calls in tears, asking you to wire money.
+- An email from your CEO's real address asks the finance team to send a payment to a new account.
+- A vendor emails new wire instructions for a real, expected invoice.
+- "Your spouse" texts from their real number, but the account was just SIM-swapped.
+- IT calls and asks you to confirm your password.
+- A first date's friend gets a text from her saying "I'm fine" — but you agreed she'd send a code word if she actually was.
+- Anyone you trust, contacting you through any channel, asking for something that matters.
+
+The pattern is the same. The channel can be compromised. The voice can be cloned. The face on the video call can be fake. The context can be researched. But the word — agreed in person, never written down, never sent over any wire — can't be.
+
+HOW IT WORKS
+- Create a group. Name it whatever fits — "Family", "Engineering", "Mike & I".
+- Show the QR code. The other person scans it.
+- Now both of you see the same word, at the same time, that rotates every hour, day, week, or month — your choice.
+- When something feels off, ask. If they can't say today's word, you've caught them.
+
+ZERO SERVER, ZERO ACCOUNT
+- No sign-up. No email. No password.
+- No analytics. No advertising. No tracking.
+- The app makes zero network requests. Period.
+- Seeds are stored encrypted on each device, never uploaded.
+- If we shut down tomorrow, your app keeps working forever.
+
+DESIGNED FOR EVERYONE
+- High Visibility mode: enormous text, plain language, AAA contrast — for older users and stressful moments.
+- Single-use word generator: a one-off random word with no group, for any conversation.
+- Emergency override word: a permanent fallback that always works.
+- Lock-screen widget: today's word at a glance.
+- Biometric unlock: optional.
+- Drill mode: practice catching a fake call before it's real.
+
+YOUR DATA, YOUR DEVICE
+- Seeds live in Android's encrypted storage (hardware-backed where available).
+- We don't see them. We can't see them. There is no server.
+- Uninstall = total wipe.
+
+RECOMMENDED BY
+The FBI Internet Crime Complaint Center, the FTC Consumer Alerts, and AARP Fraud Watch all recommend that families and organizations agree on a private verification word with the people they trust.
+
+OPEN BY DESIGN
+- Same algorithm runs on iOS and Android: HMAC-SHA256 of seed × time bucket.
+- Words chosen for clarity over phone audio: "Breezy Rocket 75" travels better than "Quixotic Cardamom 03".
+- Anyone can verify a phrase deterministically. No magic. No back doors.
+
+WHEN SOMETHING FEELS OFF
+1. Don't react. Don't decide. Don't move money.
+2. Ask: "What's our word?"
+3. If they can't say it, end the conversation. Reach them through a channel you trust.
+4. Real emergencies survive a 60-second pause. Scams don't.
+
+Account compromise plus impersonation is the attack profile every smart adversary will eventually run. Safewords is the only defense that survives both — because the proof you're asking for was never on a wire they could intercept, never in an account they could hijack, never on a recording they could clone.

@@ -1,0 +1,3 @@
+- Tap the home-screen widget to open the app
+- Widget refreshes whenever you wake or unlock the phone (Android caps automatic widget updates at 30 minutes)
+- Widget tap-target now spans the entire card

@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.thc.safewords.data.WordGenerator
 import com.thc.safewords.model.Group
 import com.thc.safewords.model.RotationInterval
 import com.thc.safewords.service.GroupRepository
@@ -53,7 +54,8 @@ fun SettingsScreen(
     plainMode: Boolean,
     onPlainModeChange: (Boolean) -> Unit,
     onRunDrill: () -> Unit,
-    onDrillHistory: () -> Unit
+    onDrillHistory: () -> Unit,
+    onOpenGenerator: () -> Unit = {}
 ) {
     val groups by GroupRepository.groups.collectAsState()
     val activeId by GroupRepository.activeGroupId.collectAsState()
@@ -145,6 +147,15 @@ fun SettingsScreen(
                 )
             }
 
+            // ─── Tools ───
+            SettingsSection("Tools") {
+                ActionRow(
+                    label = "Single use word generator",
+                    value = "Open",
+                    onClick = onOpenGenerator
+                )
+            }
+
             // ─── Practice ───
             SettingsSection("Practice") {
                 ActionRow(
@@ -173,7 +184,7 @@ fun SettingsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Safewords v1.1.0 · Offline-first",
+                    "Safewords v1.1.9 · Offline-first",
                     color = Ink.fgFaint,
                     style = TextStyle(fontSize = 11.sp, letterSpacing = 0.3.sp),
                     textAlign = TextAlign.Center
@@ -447,6 +458,20 @@ private fun EmergencyOverrideSheet(
                             if (typed.isEmpty()) Text("e.g. blue duck", color = Ink.fgFaint, style = TextStyle(fontSize = 17.sp))
                             inner()
                         }
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Ink.bgInset)
+                        .clickable { typed = WordGenerator.phrase(WordGenerator.Style.TwoWords).lowercase() }
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        "Generate one for me",
+                        color = Ink.accent,
+                        style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     )
                 }
             }

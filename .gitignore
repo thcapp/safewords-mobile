@@ -32,8 +32,27 @@ repos/safewords-android/.idea/
 Thumbs.db
 
 
-# App Store Connect credentials - never commit
+# Credentials and signing — NEVER commit
 output/app-store/AuthKey*.p8
 output/app-store/AuthKey*.base64.txt
 output/app-store/credentials.json
-output/play-store/v2/play-service-account.json
+output/play-store/**/play-service-account.json
+output/play-store/**/*.jks
+output/play-store/**/*.keystore
+output/play-store/**/*.password
+*.jks
+*.keystore
+*.p8
+*.p12
+*.pfx
+keystore.properties
+safewords.properties
+**/local.properties
+
+# macOS resource forks
+._*
+
+# Logs / state
+logs/
+state/
+inbox/

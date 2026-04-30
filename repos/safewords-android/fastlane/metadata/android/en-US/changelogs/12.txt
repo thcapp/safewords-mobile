@@ -1,0 +1,2 @@
+- First release with full Play Store listing assets (icon, feature graphic, 7 phone screenshots)
+- Same widget improvements as v1.1.8: tap to open, refreshes on screen unlock

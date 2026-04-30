@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Legacy launcher icon (composite). Used for pre-Oreo devices that don't
+  support adaptive icons. Renders the shield+people+dot on the dark bg
+  with rounded-square clipping baked in.
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="192" height="192"
+     viewBox="0 0 192 192">
+
+  <!-- Rounded-square dark background (~22% radius for modern launcher feel) -->
+  <defs>
+    <clipPath id="roundedSquare">
+      <rect x="0" y="0" width="192" height="192" rx="42" ry="42"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#roundedSquare)">
+    <rect x="0" y="0" width="192" height="192" fill="#0B0B0C"/>
+
+    <g transform="translate(96, 96)">
+      <!-- Shield -->
+      <path d="
+          M 0 -54
+          L 45 -40
+          L 45 14
+          Q 45 50 0 60
+          Q -45 50 -45 14
+          L -45 -40
+          Z"
+        fill="#F5F2EC"
+        stroke="none"/>
+
+      <!-- Three figures inside -->
+      <g fill="#0B0B0C">
+        <circle cx="0" cy="-6" r="10"/>
+        <path d="M -16 27 Q -16 8 0 8 Q 16 8 16 27 L 16 41 L -16 41 Z"/>
+
+        <circle cx="-20" cy="1" r="7"/>
+        <path d="M -34 27 Q -34 12 -20 12 Q -16 12 -14 13 L -14 38 L -34 38 Z"/>
+
+        <circle cx="20" cy="1" r="7"/>
+        <path d="M 14 13 Q 16 12 20 12 Q 34 12 34 27 L 34 38 L 14 38 Z"/>
+      </g>
+
+      <!-- Ember dot + tick -->
+      <circle cx="26" cy="-30" r="10" fill="#E8553A"/>
+      <path d="M 21 -30 L 25 -26 L 32 -34"
+        stroke="#F5F2EC"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,2 @@
+json_key_file(File.expand_path("../../../output/play-store/v2/play-service-account.json", __dir__))
+package_name("app.thc.safewords")

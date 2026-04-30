@@ -6,10 +6,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Groups
@@ -43,6 +46,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.thc.safewords.service.GroupRepository
 import com.thc.safewords.ui.drills.DrillsScreen
+import com.thc.safewords.ui.generator.GeneratorScreen
 import com.thc.safewords.ui.groups.GroupDetailScreen
 import com.thc.safewords.ui.groups.GroupsScreen
 import com.thc.safewords.ui.home.HomeScreen
@@ -63,6 +67,7 @@ sealed class Screen(val route: String) {
     data object Onboarding : Screen("onboarding")
     data object RecoveryPhrase : Screen("recovery_phrase")
     data object Drills : Screen("drills")
+    data object Generator : Screen("generator")
     data object GroupDetail : Screen("group/{groupId}") {
         fun createRoute(groupId: String) = "group/$groupId"
     }
@@ -108,16 +113,19 @@ fun SafewordsNavigation() {
 
     Scaffold(
         containerColor = Ink.bg,
-        bottomBar = { if (showTabBar) CustomTabBar(navController, route) }
-    ) { _ ->
+        bottomBar = { if (showTabBar) CustomTabBar(navController, route) },
+        modifier = Modifier.fillMaxSize()
+    ) { innerPadding ->
         NavHost(
             navController = navController,
             startDestination = start,
-            modifier = Modifier.padding(0.dp)
+            modifier = Modifier
+                .padding(innerPadding)
+                .systemBarsPadding()
         ) {
             composable(Screen.Onboarding.route) {
                 OnboardingScreen(
-                    onComplete = {
+                    onComplete = { _ ->
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Onboarding.route) { inclusive = true }
                         }
@@ -141,12 +149,17 @@ fun SafewordsNavigation() {
                 )
             }
             composable(Screen.Home.route) {
-                HomeScreen(onNavigateToGroups = {
-                    navController.navigate(Screen.Groups.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true; restoreState = true
+                HomeScreen(
+                    onNavigateToGroups = {
+                        navController.navigate(Screen.Groups.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true; restoreState = true
+                        }
+                    },
+                    onShareInvite = { id ->
+                        navController.navigate(Screen.QRDisplay.createRoute(id))
                     }
-                })
+                )
             }
             composable(Screen.Groups.route) {
                 GroupsScreen(
@@ -164,11 +177,15 @@ fun SafewordsNavigation() {
                         GroupRepository.setPlainMode(it)
                     },
                     onRunDrill = { navController.navigate(Screen.Drills.route) },
-                    onDrillHistory = { navController.navigate(Screen.Drills.route) }
+                    onDrillHistory = { navController.navigate(Screen.Drills.route) },
+                    onOpenGenerator = { navController.navigate(Screen.Generator.route) }
                 )
             }
             composable(Screen.Drills.route) {
                 DrillsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Screen.Generator.route) {
+                GeneratorScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 Screen.GroupDetail.route,

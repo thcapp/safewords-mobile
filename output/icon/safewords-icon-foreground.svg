@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Safewords adaptive icon foreground.
+  Canvas: 432x432 (108dp @ 4x), with the actual icon content within the
+  inner 264dp safe zone (Android trims the rest for circle/squircle/etc masks).
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="432" height="432"
+     viewBox="0 0 432 432">
+
+  <!-- Shield silhouette in off-white. The shield occupies the safe zone
+       (centered, ~264px wide). -->
+  <g transform="translate(216, 216)">
+    <!-- Shield body: classic heater-shape with a slight chevron at the bottom point. -->
+    <path d="
+        M 0 -120
+        L 100 -90
+        L 100 30
+        Q 100 110 0 132
+        Q -100 110 -100 30
+        L -100 -90
+        Z"
+      fill="#F5F2EC"
+      stroke="none"/>
+
+    <!-- Three figures inside the shield, offset slightly so the ember dot fits at top-right.
+         Centered around y=20 inside the shield. -->
+    <g fill="#0B0B0C">
+      <!-- Center figure (slightly larger, behind/center) -->
+      <circle cx="0" cy="-12" r="22"/>
+      <path d="M -36 60 Q -36 18 0 18 Q 36 18 36 60 L 36 90 L -36 90 Z"/>
+
+      <!-- Left figure -->
+      <circle cx="-44" cy="2" r="16"/>
+      <path d="M -76 60 Q -76 28 -44 28 Q -36 28 -32 30 L -32 84 L -76 84 Z"/>
+
+      <!-- Right figure -->
+      <circle cx="44" cy="2" r="16"/>
+      <path d="M 32 30 Q 36 28 44 28 Q 76 28 76 60 L 76 84 L 32 84 Z"/>
+    </g>
+
+    <!-- Ember verification dot at top-right of the shield. -->
+    <circle cx="58" cy="-66" r="22" fill="#E8553A"/>
+    <!-- Small white tick inside the ember dot (legible at >= 96px) -->
+    <path d="M 47 -66 L 55 -58 L 70 -74"
+      stroke="#F5F2EC"
+      stroke-width="6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"/>
+  </g>
+</svg>

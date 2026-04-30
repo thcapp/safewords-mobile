@@ -1,0 +1,1 @@
+- Fixed home-screen widget showing "Loading…" forever (widget receiver class wasn't reachable from the merged APK; moved widget code into the main app module).

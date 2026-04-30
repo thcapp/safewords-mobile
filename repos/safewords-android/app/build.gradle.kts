@@ -8,12 +8,21 @@ android {
     namespace = "com.thc.safewords"
     compileSdk = 35
 
+    // Strip Firebase telemetry transport pulled in transitively by MLKit.
+    // We never use it; declaring its INTERNET permission would contradict our
+    // "zero network" Data Safety claim.
+    configurations.all {
+        exclude(group = "com.google.android.datatransport")
+        exclude(group = "com.google.firebase", module = "firebase-encoders")
+        exclude(group = "com.google.firebase", module = "firebase-encoders-json")
+    }
+
     defaultConfig {
         applicationId = "app.thc.safewords"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.1.0"
+        versionCode = 12
+        versionName = "1.1.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -93,6 +102,10 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.fragment.ktx)
+
+    implementation(libs.androidx.glance)
+    implementation(libs.androidx.glance.material3)
+    implementation(libs.androidx.work.runtime)
 
     implementation(libs.gson)
 

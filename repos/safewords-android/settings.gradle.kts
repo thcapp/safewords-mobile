@@ -21,4 +21,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "Safewords"
 include(":app")
-include(":widget")

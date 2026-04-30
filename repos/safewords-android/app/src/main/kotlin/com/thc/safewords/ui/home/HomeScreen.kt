@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,7 +49,10 @@ import kotlinx.coroutines.delay
 import kotlin.math.abs
 
 @Composable
-fun HomeScreen(onNavigateToGroups: () -> Unit) {
+fun HomeScreen(
+    onNavigateToGroups: () -> Unit,
+    onShareInvite: (groupId: String) -> Unit = {}
+) {
     val groups by GroupRepository.groups.collectAsState()
     val activeId by GroupRepository.activeGroupId.collectAsState()
     val selected = groups.firstOrNull { it.id == activeId } ?: groups.firstOrNull()
@@ -112,7 +115,28 @@ fun HomeScreen(onNavigateToGroups: () -> Unit) {
                 )
             }
             Spacer(Modifier.weight(1f))
-            // Bell is reserved for future notifications; hidden for v1.1.0.
+            // Share / invite QR
+            Row(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Ink.tickFill)
+                    .clickable { onShareInvite(g.id) }
+                    .padding(start = 12.dp, end = 14.dp, top = 7.dp, bottom = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.QrCode,
+                    contentDescription = "Invite",
+                    tint = Ink.accent,
+                    modifier = Modifier.size(15.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "Invite",
+                    color = Ink.accent,
+                    style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.1).sp)
+                )
+            }
         }
 
         // Hero

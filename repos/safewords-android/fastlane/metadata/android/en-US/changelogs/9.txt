@@ -1,0 +1,3 @@
+- Onboarding now demonstrates how a safeword stops a scam call (the "What's our word?" / "I don't remember" / hang up moment)
+- "Recommended by FBI, FTC, AARP" trust pill on the welcome screen
+- Generator now offers three styles: Word + number / Two words / Three words
