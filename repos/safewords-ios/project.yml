@@ -40,9 +40,14 @@ targets:
           CFBundleVersion: "3"
           AppIdentifierPrefix: "$(AppIdentifierPrefix)"
           ITSAppUsesNonExemptEncryption: false
-          UILaunchScreen: {}
+          UILaunchScreen:
+            UIColorName: ""
+            UIImageName: ""
           UISupportedInterfaceOrientations:
             - UIInterfaceOrientationPortrait
+            - UIInterfaceOrientationPortraitUpsideDown
+            - UIInterfaceOrientationLandscapeLeft
+            - UIInterfaceOrientationLandscapeRight
           NSCameraUsageDescription: "Safewords needs camera access to scan QR codes for joining family groups."
         CODE_SIGN_ENTITLEMENTS: Safewords/Safewords.entitlements
     entitlements:
@@ -78,6 +83,7 @@ targets:
           ITSAppUsesNonExemptEncryption: false
           NSExtension:
             NSExtensionPointIdentifier: com.apple.widgetkit-extension
+            NSExtensionPrincipalClass: ""
         CODE_SIGN_ENTITLEMENTS: SafewordsWidget/SafewordsWidget.entitlements
     entitlements:
       path: SafewordsWidget/SafewordsWidget.entitlements

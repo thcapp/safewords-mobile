@@ -211,6 +211,26 @@ platform :ios do
     sync_appstore_profiles(readonly: true)
     configure_code_signing!
 
+    # Select the highest-version Xcode installed on the runner. Apple now
+    # requires apps built with the iOS 26 SDK or later (Xcode 26+) for App
+    # Store submission. The workflow's default `xcode-select -s Xcode.app`
+    # may resolve to an older version (Xcode 16.4 ships iOS 18.5 SDK).
+    if ENV["CI"] == "true"
+      xcode_apps = Dir.glob("/Applications/Xcode_*.app").sort_by do |path|
+        # Sort by parsed version to pick the newest (e.g. Xcode_26.0.app > Xcode_16.4.app)
+        File.basename(path).gsub("Xcode_", "").gsub(".app", "").split(".").map { |n| n.to_i }
+      end
+      latest_xcode = xcode_apps.last
+      if latest_xcode
+        UI.message("Selecting #{latest_xcode}")
+        sh("sudo xcode-select -s '#{latest_xcode}/Contents/Developer'")
+        sh("xcodebuild -version")
+        sh("xcrun --show-sdk-version --sdk iphoneos")
+      else
+        UI.important("No Xcode_*.app found in /Applications; using default selection")
+      end
+    end
+
     # Diagnostic: dump entitlements of every installed provisioning profile so
     # we can confirm App Groups (and others) actually made it onto disk.
     if ENV["CI"] == "true"
