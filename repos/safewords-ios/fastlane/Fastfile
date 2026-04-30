@@ -172,7 +172,19 @@ def configure_code_signing!
     use_automatic_signing: false,
     path: PROJECT_PATH,
     team_id: apple_team_id,
-    targets: ["Safewords", "SafewordsWidget"]
+    targets: ["Safewords"],
+    code_sign_identity: "Apple Distribution",
+    profile_name: "match AppStore #{APP_IDENTIFIER}",
+    bundle_identifier: APP_IDENTIFIER
+  )
+  update_code_signing_settings(
+    use_automatic_signing: false,
+    path: PROJECT_PATH,
+    team_id: apple_team_id,
+    targets: ["SafewordsWidget"],
+    code_sign_identity: "Apple Distribution",
+    profile_name: "match AppStore #{WIDGET_IDENTIFIER}",
+    bundle_identifier: WIDGET_IDENTIFIER
   )
 end
 
