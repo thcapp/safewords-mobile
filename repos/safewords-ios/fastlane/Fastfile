@@ -107,12 +107,20 @@ def sync_appstore_profiles(readonly:)
   setup_ci if ENV["CI"] == "true"
 
   # GitHub Actions' actions/checkout@v4 sets a global http.extraheader with
-  # GITHUB_TOKEN. That token is scoped to the current repo only and cannot
-  # clone the private certs repo, so it overrides match's own auth and breaks
-  # the clone with "could not read Username". Strip it before match runs.
+  # GITHUB_TOKEN scoped to the current repo only. We also can't reliably
+  # combine MATCH_GIT_BASIC_AUTHORIZATION with our private certs repo on
+  # this org. Solution: rebuild the certs URL with x-access-token credentials
+  # embedded, and clear all extraheader / basic-auth state so match makes
+  # one clean clone with the embedded creds.
+  url = ENV["MATCH_GIT_URL"].to_s
+  token = ENV["MATCH_GIT_TOKEN"].to_s
   if ENV["CI"] == "true"
+    if !token.empty? && url.start_with?("https://github.com/")
+      url = url.sub("https://github.com/", "https://x-access-token:#{token}@github.com/")
+    end
     sh("git config --global --unset-all http.https://github.com/.extraheader || true")
-    sh("git config --global --remove-section http.https://github.com/ || true")
+    sh("git config --global --remove-section http.https://github.com/ 2>/dev/null || true")
+    ENV["MATCH_GIT_BASIC_AUTHORIZATION"] = nil
   end
 
   match(
@@ -120,7 +128,7 @@ def sync_appstore_profiles(readonly:)
     app_identifier: APP_IDENTIFIERS,
     api_key: asc_api_key,
     team_id: apple_team_id,
-    git_url: ENV["MATCH_GIT_URL"],
+    git_url: url,
     readonly: readonly,
     storage_mode: "git"
   )
