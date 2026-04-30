@@ -34,21 +34,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.thc.safewords
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        INFOPLIST_VALUES:
-          CFBundleDisplayName: Safewords
-          CFBundleShortVersionString: "1.1.0"
-          CFBundleVersion: "3"
-          AppIdentifierPrefix: "$(AppIdentifierPrefix)"
-          ITSAppUsesNonExemptEncryption: false
-          UILaunchScreen:
-            UIColorName: ""
-            UIImageName: ""
-          UISupportedInterfaceOrientations:
-            - UIInterfaceOrientationPortrait
-            - UIInterfaceOrientationPortraitUpsideDown
-            - UIInterfaceOrientationLandscapeLeft
-            - UIInterfaceOrientationLandscapeRight
-          NSCameraUsageDescription: "Safewords needs camera access to scan QR codes for joining family groups."
+        INFOPLIST_FILE: Safewords/Info.plist
+        GENERATE_INFOPLIST_FILE: "NO"
         CODE_SIGN_ENTITLEMENTS: Safewords/Safewords.entitlements
     entitlements:
       path: Safewords/Safewords.entitlements
@@ -75,15 +62,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.thc.safewords.widget
-        INFOPLIST_VALUES:
-          CFBundleDisplayName: Safewords Widget
-          CFBundleShortVersionString: "1.1.0"
-          CFBundleVersion: "3"
-          AppIdentifierPrefix: "$(AppIdentifierPrefix)"
-          ITSAppUsesNonExemptEncryption: false
-          NSExtension:
-            NSExtensionPointIdentifier: com.apple.widgetkit-extension
-            NSExtensionPrincipalClass: ""
+        INFOPLIST_FILE: SafewordsWidget/Info.plist
+        GENERATE_INFOPLIST_FILE: "NO"
         CODE_SIGN_ENTITLEMENTS: SafewordsWidget/SafewordsWidget.entitlements
     entitlements:
       path: SafewordsWidget/SafewordsWidget.entitlements
