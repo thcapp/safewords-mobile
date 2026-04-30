@@ -371,9 +371,9 @@ platform :ios do
 
       # Linked App Groups — via the relationship endpoint, NOT via capabilities
       begin
-        path = "bundleIds/#{bid.id}/appGroups"
-        resp = Spaceship::ConnectAPI.get(path).body
-        groups = resp["data"] || []
+        client = Spaceship::ConnectAPI.client
+        resp = client.get("bundleIds/#{bid.id}/appGroups")
+        groups = resp.body["data"] || []
         if groups.empty?
           UI.error("  ⚠️  NO APP GROUPS LINKED to this Bundle ID")
         else
@@ -385,6 +385,23 @@ platform :ios do
       rescue => e
         UI.error("  Could not query linked groups: #{e.class}: #{e.message}")
       end
+    end
+
+    UI.message("--- All App Groups in account ---")
+    begin
+      client = Spaceship::ConnectAPI.client
+      resp = client.get("appGroups")
+      groups = resp.body["data"] || []
+      if groups.empty?
+        UI.error("  ⚠️  NO APP GROUPS exist in the account at all")
+      else
+        groups.each do |g|
+          attrs = g["attributes"] || {}
+          UI.message("  group_record id=#{g["id"]}: identifier=#{attrs["identifier"]} name=#{attrs["name"]}")
+        end
+      end
+    rescue => e
+      UI.error("  Could not list account App Groups: #{e.class}: #{e.message}")
     end
     UI.message("=" * 70)
   end
