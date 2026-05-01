@@ -36,6 +36,20 @@ object GroupRepository {
     private const val ACTIVE_GROUP_KEY = "active_group_id"
     private const val PLAIN_MODE_KEY = "plain_mode"
     private const val ADVANCED_VIEW_KEY = "advanced_view_enabled"
+    private const val DEMO_MODE_KEY = "demo_mode"
+    private val DEMO_GROUP_ID = "00000000-0000-0000-0000-00000000d013"
+
+    /**
+     * Stable seed used for the demo group. Spells "TIGER-DEMO-SAFEWORDS-V13-DEMO-!!"
+     * in ASCII so anyone reverse-engineering can see this isn't a real seed.
+     * Identical to iOS so cross-platform parity holds for the demo group.
+     */
+    private val DEMO_SEED_BYTES = byteArrayOf(
+        0x54, 0x49, 0x47, 0x45, 0x52, 0x2d, 0x44, 0x45,
+        0x4d, 0x4f, 0x2d, 0x53, 0x41, 0x46, 0x45, 0x57,
+        0x4f, 0x52, 0x44, 0x53, 0x2d, 0x56, 0x31, 0x33,
+        0x2d, 0x44, 0x45, 0x4d, 0x4f, 0x2d, 0x21, 0x21,
+    )
     private const val BIOMETRIC_REQUIRED_KEY = "biometric_required"
     private const val NOTIFY_ROTATION_KEY = "notify_on_rotation"
     private const val PREVIEW_NEXT_WORD_KEY = "preview_next_word"
@@ -62,9 +76,13 @@ object GroupRepository {
     private val _activeGroupId = MutableStateFlow<String?>(null)
     val activeGroupId: StateFlow<String?> = _activeGroupId.asStateFlow()
 
+    private val _demoMode = MutableStateFlow(false)
+    val demoMode: StateFlow<Boolean> = _demoMode.asStateFlow()
+
     init {
         loadGroups()
         loadActiveGroupId()
+        loadDemoMode()
     }
 
     // ─── Group lifecycle ────────────────────────────────────────────────
@@ -79,6 +97,7 @@ object GroupRepository {
         interval: RotationInterval = getDefaultInterval(),
         seedHex: String? = null
     ): Group? {
+        exitDemoMode()
         val finalSeedHex = seedHex ?: TOTPDerivation.bytesToHex(generateSeed())
 
         val creator = Member(name = creatorName, role = Role.CREATOR)
@@ -107,6 +126,7 @@ object GroupRepository {
         interval: RotationInterval,
         memberName: String
     ): Group? {
+        exitDemoMode()
         val member = Member(name = memberName, role = Role.MEMBER)
         val group = Group(
             name = name,
@@ -193,6 +213,10 @@ object GroupRepository {
     }
 
     fun deleteGroup(groupId: String) {
+        if (groupId == DEMO_GROUP_ID) {
+            exitDemoMode()
+            return
+        }
         SecureStorageService.deleteSeed(groupId)
         val updated = _groups.value.filterNot { it.id == groupId }
         saveGroups(updated)
@@ -242,6 +266,9 @@ object GroupRepository {
     // ─── Seed access + safeword derivation ──────────────────────────────
 
     fun getGroupSeed(groupId: String): ByteArray? {
+        if (_demoMode.value && groupId == DEMO_GROUP_ID) {
+            return DEMO_SEED_BYTES.copyOf()
+        }
         val hex = SecureStorageService.getSeed(groupId) ?: return null
         return TOTPDerivation.hexToBytes(hex)
     }
@@ -342,11 +369,80 @@ object GroupRepository {
 
     /** Wipe every group, every seed, every preference. Only callable from danger zone. */
     fun resetAllData() {
-        _groups.value.forEach { SecureStorageService.deleteSeed(it.id) }
+        _groups.value.forEach {
+            if (it.id != DEMO_GROUP_ID) SecureStorageService.deleteSeed(it.id)
+        }
         prefs.edit().clear().apply()
         _groups.value = emptyList()
         _activeGroupId.value = null
+        _demoMode.value = false
     }
+
+    // ─── Demo mode ──────────────────────────────────────────────────────
+
+    /**
+     * Drop the user into a non-persisted demo group so they can explore the
+     * app before committing to creating or joining a real group. The demo
+     * group's seed is hardcoded and identical across iOS/Android.
+     */
+    fun enterDemoMode() {
+        if (_demoMode.value) return
+        // Don't shadow real groups.
+        if (_groups.value.any { it.id != DEMO_GROUP_ID }) return
+        _demoMode.value = true
+        prefs.edit().putBoolean(DEMO_MODE_KEY, true).apply()
+        val demo = demoGroup()
+        _groups.value = listOf(demo)
+        setActiveGroup(demo.id)
+    }
+
+    fun exitDemoMode() {
+        if (!_demoMode.value && _groups.value.none { it.id == DEMO_GROUP_ID }) return
+        _demoMode.value = false
+        prefs.edit().putBoolean(DEMO_MODE_KEY, false).apply()
+        _groups.value = _groups.value.filterNot { it.id == DEMO_GROUP_ID }
+        if (_activeGroupId.value == DEMO_GROUP_ID) {
+            setActiveGroup(_groups.value.firstOrNull()?.id)
+        }
+    }
+
+    private fun loadDemoMode() {
+        val on = prefs.getBoolean(DEMO_MODE_KEY, false)
+        if (on) {
+            _demoMode.value = true
+            // Inject the demo group on launch if it isn't already present.
+            if (_groups.value.none { it.id == DEMO_GROUP_ID }) {
+                _groups.value = _groups.value + demoGroup()
+            }
+            if (_activeGroupId.value == null) {
+                _activeGroupId.value = DEMO_GROUP_ID
+            }
+        }
+    }
+
+    private fun demoGroup(): Group = Group(
+        id = DEMO_GROUP_ID,
+        name = "Demo · TIGER",
+        interval = RotationInterval.DAILY,
+        members = listOf(Member(name = "Demo User", role = Role.CREATOR)),
+        createdAt = 0L,
+        primitives = Primitives(
+            rotatingWord = RotatingWordPrimitive(
+                enabled = true,
+                intervalSeconds = RotationInterval.DAILY.seconds,
+                wordFormat = WordFormat.ADJECTIVE_NOUN_NUMBER,
+            ),
+            challengeAnswer = com.thc.safewords.data.ChallengeAnswerPrimitive(
+                enabled = true,
+                tableVersion = 1,
+                rowCount = 100,
+            ),
+            staticOverride = com.thc.safewords.data.StaticOverridePrimitive(
+                enabled = true,
+                derivationVersion = 1,
+            ),
+        ),
+    )
 
     // ─── Internal helpers ───────────────────────────────────────────────
 

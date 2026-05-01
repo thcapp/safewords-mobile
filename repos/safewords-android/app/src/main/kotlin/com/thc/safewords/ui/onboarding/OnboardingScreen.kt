@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Icon
@@ -59,7 +60,8 @@ import java.security.SecureRandom
 fun OnboardingScreen(
     onComplete: (createdGroupId: String?) -> Unit,
     onJoinWithQR: () -> Unit,
-    onJoinWithRecovery: () -> Unit = {}
+    onJoinWithRecovery: () -> Unit = {},
+    onTryDemo: () -> Unit = {},
 ) {
     var step by remember { mutableIntStateOf(0) }
     var path by remember { mutableStateOf<String?>(null) }
@@ -94,7 +96,8 @@ fun OnboardingScreen(
                 1 -> PanelStart(
                     onCreate = { path = "create"; step = 2 },
                     onJoin = onJoinWithQR,
-                    onRecovery = onJoinWithRecovery
+                    onRecovery = onJoinWithRecovery,
+                    onDemo = onTryDemo,
                 )
                 else -> {
                     if (path == "create") {
@@ -333,7 +336,7 @@ private fun DialogLine(role: String, line: String, accent: Boolean) {
 }
 
 @Composable
-private fun PanelStart(onCreate: () -> Unit, onJoin: () -> Unit, onRecovery: () -> Unit) {
+private fun PanelStart(onCreate: () -> Unit, onJoin: () -> Unit, onRecovery: () -> Unit, onDemo: () -> Unit) {
     SectionLabel("Start · 02")
     Spacer(Modifier.height(28.dp))
     Text(
@@ -359,6 +362,12 @@ private fun PanelStart(onCreate: () -> Unit, onJoin: () -> Unit, onRecovery: () 
         title = "Restore from a backup",
         sub = "Paste your seed if you saved one earlier.",
         icon = Icons.Outlined.Refresh, onClick = onRecovery
+    )
+    Spacer(Modifier.height(12.dp))
+    OnboardOption(
+        title = "Try without a group",
+        sub = "Look around the app first. Nothing saved.",
+        icon = Icons.Outlined.PlayArrow, onClick = onDemo
     )
 
     Spacer(Modifier.height(24.dp))

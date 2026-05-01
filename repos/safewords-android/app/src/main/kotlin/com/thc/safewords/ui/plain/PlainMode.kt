@@ -73,7 +73,7 @@ import kotlinx.coroutines.delay
 private enum class PlainScreen { Home, Verify, Help, Onboarding }
 
 @Composable
-fun PlainRoot(onExitPlain: () -> Unit = {}) {
+fun PlainRoot(onExitPlain: () -> Unit = {}, onSetupReal: () -> Unit = {}) {
     val onboarded = rememberSaveable { mutableStateOf(false) }
     if (!onboarded.value) {
         PlainOnboarding(onDone = { onboarded.value = true })
@@ -85,7 +85,8 @@ fun PlainRoot(onExitPlain: () -> Unit = {}) {
         when (screen) {
             PlainScreen.Home -> PlainHome(
                 onVerify = { screen = PlainScreen.Verify },
-                onExitPlain = onExitPlain
+                onExitPlain = onExitPlain,
+                onSetupReal = onSetupReal,
             )
             PlainScreen.Verify -> PlainVerify(onDone = { screen = PlainScreen.Home })
             PlainScreen.Help -> PlainHelp(onExitPlain = onExitPlain)
@@ -183,9 +184,10 @@ private fun BigButton(
 }
 
 @Composable
-private fun PlainHome(onVerify: () -> Unit, onExitPlain: () -> Unit) {
+private fun PlainHome(onVerify: () -> Unit, onExitPlain: () -> Unit, onSetupReal: () -> Unit = {}) {
     val groups by GroupRepository.groups.collectAsState()
     val activeId by GroupRepository.activeGroupId.collectAsState()
+    val demoMode by GroupRepository.demoMode.collectAsState()
     val g = groups.firstOrNull { it.id == activeId } ?: groups.firstOrNull()
     var phrase by remember { mutableStateOf("") }
     var remaining by remember { mutableLongStateOf(0L) }
@@ -206,6 +208,10 @@ private fun PlainHome(onVerify: () -> Unit, onExitPlain: () -> Unit) {
             .padding(horizontal = 18.dp)
             .padding(top = 62.dp, bottom = 120.dp)
     ) {
+        if (demoMode) {
+            DemoBanner(onSetupReal = onSetupReal)
+            Spacer(Modifier.height(8.dp))
+        }
         // Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -740,6 +746,33 @@ private fun PlainOnboarding(onDone: () -> Unit) {
                 style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().clickable { step -= 1 }.padding(14.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DemoBanner(onSetupReal: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(A11y.accent)
+            .clickable(onClick = onSetupReal)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "DEMO MODE",
+                color = A11y.accentInk,
+                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "Set up your real group →",
+                color = A11y.accentInk,
+                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp)
             )
         }
     }

@@ -125,6 +125,11 @@ fun SafewordsNavigation() {
                 advancedView = true
                 GroupRepository.setAdvancedView(true)
             },
+            onSetupReal = {
+                GroupRepository.exitDemoMode()
+                advancedView = true
+                GroupRepository.setAdvancedView(true)
+            },
         )
         return
     }
@@ -160,7 +165,13 @@ fun SafewordsNavigation() {
                     },
                     onJoinWithRecovery = {
                         navController.navigate(Screen.RecoveryPhrase.route)
-                    }
+                    },
+                    onTryDemo = {
+                        GroupRepository.enterDemoMode()
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        }
+                    },
                 )
             }
             composable(Screen.RecoveryPhrase.route) {

@@ -21,8 +21,8 @@ android {
         applicationId = "app.thc.safewords"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "1.3.0"
+        versionCode = 15
+        versionName = "1.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -88,6 +88,10 @@ val copySharedToTestResources by tasks.registering(Copy::class) {
     from(File(projectDir, "src/main/assets/wordlists/adjectives.json"))
     from(File(projectDir, "src/main/assets/wordlists/nouns.json"))
     into(testResourcesDir)
+    // src/main/assets/wordlists/* lives under the same root that
+    // copySharedToAssets writes into — declare the dependency so gradle
+    // orders them correctly.
+    mustRunAfter("copySharedToAssets")
 }
 
 // /shared/safety-card-copy.json is read by CardRenderer at runtime, so it

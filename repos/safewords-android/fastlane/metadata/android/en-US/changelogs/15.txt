@@ -1,0 +1,5 @@
+v1.3.1 — Try without committing.
+
+- New: "Try without a group" path on first launch. Drops you into a demo group with TIGER as the starter word so you can poke Plain Mode, Settings, and the cards browser before creating or joining a real group.
+- Demo banner shows in Plain home; tap it to exit demo and set up your real group. Demo data is wiped on real-group creation.
+- Defensive recovery-phrase loading: missing/malformed wordlist now surfaces a clear error instead of crashing.

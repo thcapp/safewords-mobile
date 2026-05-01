@@ -15,8 +15,8 @@ import java.util.Locale
 class Bip39(private val wordlist: List<String>) {
 
     init {
-        require(wordlist.size == EXPECTED_VOCAB_SIZE) {
-            "BIP39 English wordlist must have $EXPECTED_VOCAB_SIZE words (got ${wordlist.size})"
+        if (wordlist.size != EXPECTED_VOCAB_SIZE) {
+            throw Error.InvalidWordlistCount(wordlist.size)
         }
     }
 
@@ -38,6 +38,14 @@ class Bip39(private val wordlist: List<String>) {
         data object BadChecksum : Error(
             code = "BAD_CHECKSUM",
             userMessage = "Recovery phrase checksum is invalid. Check the words and order."
+        )
+        data object MissingWordlist : Error(
+            code = "MISSING_WORDLIST",
+            userMessage = "Recovery word list is unavailable. Use the raw seed backup or reinstall the app."
+        )
+        class InvalidWordlistCount(val count: Int) : Error(
+            code = "INVALID_WORDLIST",
+            userMessage = "Recovery word list is invalid. Expected 2048 words, found $count."
         )
     }
 
@@ -148,16 +156,27 @@ class Bip39(private val wordlist: List<String>) {
  * For unit tests, construct [Bip39] directly with a wordlist read from disk.
  */
 object RecoveryPhrase {
-    private val instance: Bip39 by lazy {
-        val raw = SafewordsApp.instance.assets
-            .open("wordlists/bip39-english.txt")
-            .bufferedReader(Charsets.UTF_8)
-            .use { it.readText() }
-        val words = raw.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
-        Bip39(words)
+    /**
+     * Lazy-loads the wordlist on first use. If the asset is missing or
+     * malformed, surfaces the failure as a Bip39.Error so callers can fall
+     * back to hex seed display rather than crashing the app.
+     */
+    private val instanceResult: Result<Bip39> by lazy {
+        runCatching {
+            val stream = try {
+                SafewordsApp.instance.assets.open("wordlists/bip39-english.txt")
+            } catch (_: Throwable) {
+                throw Bip39.Error.MissingWordlist
+            }
+            val raw = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val words = raw.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+            Bip39(words)
+        }
     }
 
-    fun encode(seed: ByteArray): String = instance.encode(seed)
-    fun decode(input: String): ByteArray = instance.decode(input)
-    fun normalize(input: String): List<String> = instance.normalize(input)
+    private fun instance(): Bip39 = instanceResult.getOrThrow()
+
+    fun encode(seed: ByteArray): String = instance().encode(seed)
+    fun decode(input: String): ByteArray = instance().decode(input)
+    fun normalize(input: String): List<String> = instance().normalize(input)
 }
