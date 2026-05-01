@@ -2,7 +2,9 @@
 
 A comprehensive technical reference for the Safewords rotating-phrase algorithm and the cross-platform contract that both the iOS (Swift/SwiftUI) and Android (Kotlin/Compose) apps must honor.
 
-This document is the authoritative reference for the cryptographic core. For the narrative spec see [`totp-word-algorithm.md`](./totp-word-algorithm.md); for product-level requirements see [`feature-spec.md`](./feature-spec.md).
+This document is the authoritative reference for the v1.0 rotating-word cryptographic core. v1.3 adds three additional primitives (numeric, static override, challenge/answer) that share the same HMAC + word-derivation foundation; see [`v1.3-architecture.md`](./v1.3-architecture.md) for byte-level specs of those primitives. v1.2 added BIP39 24-word recovery phrases; see [`../shared/recovery-schema.md`](../shared/recovery-schema.md).
+
+For the narrative spec of the original v1.0 algorithm see [`totp-word-algorithm.md`](./totp-word-algorithm.md); for product-level requirements see [`feature-spec.md`](./feature-spec.md).
 
 ---
 

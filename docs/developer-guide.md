@@ -21,7 +21,14 @@ Design goals that constrain every decision:
 - **Seeds never leave the device** in plaintext; QR sharing is the only distribution path.
 - **Frozen wordlists** (v1 = 197 adjectives, 300 nouns). Changing them breaks sync with existing groups.
 
-Two apps, one contract — `shared/test-vectors.json` is that contract.
+Two apps, one contract — the cross-platform contract lives in `shared/`:
+- `test-vectors.json` — original v1.0 TOTP rotating word vectors
+- `recovery-vectors.json` — v1.2 BIP39 recovery phrase encode/decode vectors
+- `primitive-vectors.json` — v1.3 static override / numeric / challenge-answer derivations
+- `migration-vectors.json` — v1.2 → v1.3 group config schema migration
+- `safety-card-copy.json` — shared card copy strings for native printable cards
+
+If you change a derivation, every vector file becomes the test contract both apps must pass.
 
 ---
 
@@ -131,8 +138,7 @@ Or open `repos/safewords-android/` in Android Studio and press the green **Run**
 
 ### Modules
 
-- `:app` — main application (`com.thc.safewords`, `minSdk 26`, `compileSdk 34`).
-- `:widget` — Jetpack Glance home-screen widget.
+- `:app` — main application (`com.thc.safewords`, `minSdk 26`, `compileSdk 35`). Single-module since v1.2 — the widget code moved into `:app` when the previous `:widget` module caused a `ClassNotFoundException` for the AppWidgetProvider receiver.
 
 Key deps (from `app/build.gradle.kts` and `libs.versions.toml`):
 
@@ -152,7 +158,13 @@ Everything under `shared/` is a **cross-platform contract**. Both apps read from
 |------|------------|
 | `shared/wordlists/adjectives.json` | 197 adjectives, frozen at v1. |
 | `shared/wordlists/nouns.json`      | 300 nouns, frozen at v1. |
-| `shared/test-vectors.json`         | Known seed + timestamp → phrase pairs. Both apps must pass all of these. |
+| `shared/wordlists/bip39-english.txt` | BIP39 English wordlist (2048 words), v1.2+. |
+| `shared/test-vectors.json`         | v1.0 rotating-word derivations. Both apps must pass all. |
+| `shared/recovery-vectors.json`     | v1.2 BIP39 encode/decode test vectors (valid + invalid cases). |
+| `shared/recovery-schema.md`        | BIP39 recovery contract spec (entropy-only, 24-word, no PBKDF2). |
+| `shared/primitive-vectors.json`    | v1.3 static override / numeric / challenge-answer derivations. |
+| `shared/migration-vectors.json`    | v1.2 → v1.3 group config schema migration. |
+| `shared/safety-card-copy.json`     | v1.3 card copy + sensitivity tier per template. |
 | `shared/qr-schema.json`            | v1 QR payload format for sharing a seed with a family member. |
 
 **Rules:**
@@ -174,7 +186,27 @@ Everything under `shared/` is a **cross-platform contract**. Both apps read from
 | Test | `xcodebuild -scheme Safewords -destination 'platform=iOS Simulator,name=iPhone 15' test` |
 | Open in Xcode | `open Safewords.xcodeproj` |
 
-### Android (from `repos/safewords-android/`)
+### Android (from `repos/safewords-android/` — usually run on `u5` dev VM)
+
+The primary VM (`/data/code/safewords-mobile/`) **does not have gradle, the Android SDK, or the keystore**. Build/test tooling lives on `u5`. Sync source first, then run remotely:
+
+```bash
+# Sync from primary → u5
+rsync -av repos/safewords-android/app/src/ u5:/home/ultra/code/safewords-mobile/repos/safewords-android/app/src/
+rsync -av repos/safewords-android/app/build.gradle.kts u5:.../app/build.gradle.kts
+rsync -av repos/safewords-android/gradle/libs.versions.toml u5:.../gradle/libs.versions.toml
+
+# Then build/test on u5
+ssh u5 "cd /home/ultra/code/safewords-mobile/repos/safewords-android && ./gradlew :app:testDebugUnitTest"
+ssh u5 "cd /home/ultra/code/safewords-mobile/repos/safewords-android && ./gradlew :app:assembleDebug"
+ssh u5 "cd /home/ultra/code/safewords-mobile/repos/safewords-android && fastlane build"      # signed AAB
+ssh u5 "cd /home/ultra/code/safewords-mobile/repos/safewords-android && fastlane internal"   # build + push to Play internal track
+```
+
+Validate non-trivial Android changes on `u5` BEFORE committing. Three classes of bugs only surface on a real compile:
+1. Kotlin same-package private name collisions (we hit one with two `Phase` enums in the same package)
+2. Missing dependencies (`androidx.print` for `PrintHelper` was missing initially)
+3. Test-time vs runtime resource access (singletons that depend on `SafewordsApp.instance` fail in JVM unit tests)
 
 | Task | Command |
 |------|---------|
@@ -247,15 +279,22 @@ The `docs/` directory is organized by concern. Start here when you need deeper c
 | File | What you'll find |
 |------|------------------|
 | `docs/feature-spec.md`              | Full product requirements across all phases. The "what and why." |
+| `docs/v1.3-best-in-class-design.md` | The locked v1.3 design brief (claude + codex iteration log). |
+| `docs/v1.3-architecture.md`         | As-built v1.3 reference: primitives, group config, demo mode, cards, render pipelines. |
+| `docs/safety-cards.md`              | Card system: types, sensitivity tiers, render pipelines, biometric gating. |
+| `docs/demo-mode.md`                 | Demo seed, group, lifecycle, and cross-platform parity rules. |
+| `docs/release-state.md`             | Live snapshot of Play and TestFlight tracks; updated as releases ship. |
+| `docs/release-pipeline-gotchas.md`  | Postmortem of every weird thing we hit setting up Play + TestFlight pipelines. |
 | `docs/totp-word-algorithm.md`       | Core algorithm spec (HMAC-SHA256 → adjective + noun + number). |
 | `docs/totp-algorithm-reference.md`  | Algorithm reference + cross-platform contract + test-vector explanation. |
+| `shared/recovery-schema.md`         | BIP39 recovery contract spec (entropy-only, 24-word, no PBKDF2). |
 | `docs/ios-architecture.md`          | iOS code reference — module map, where things live, conventions. |
 | `docs/android-architecture.md`      | Android code reference — module map, where things live, conventions. |
 | `docs/design-system.md`             | Visual design tokens (colors, type, spacing, motion). |
-| `docs/plain-mode.md`                | Accessibility / "plain mode" — large-type, reduced-motion variant. |
+| `docs/plain-mode.md`                | Plain Mode (the v1.3 default home) — large-type layout. |
 | `docs/word-lists.md`                | Wordlist provenance, curation rules, v1 freeze rationale. |
-
-Not every doc exists yet at the time you're reading this. If a link above 404s, that doc is still on the queue — check `queue/` or ask.
+| `docs/design-handoff-log.md`        | Record of design handoffs and what shipped vs. was deferred. |
+| `docs/best-in-class-expansion-proposal.md` | Codex's original v1.3 expansion proposal (historical). |
 
 ---
 

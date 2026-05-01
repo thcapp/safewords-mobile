@@ -1,8 +1,22 @@
-# Plain Mode — Accessibility Guide
+# Plain Mode — The default home (since v1.3)
 
-A guide for developers working on Safewords' high-visibility "Plain mode." This document explains **why** Plain mode exists, **who** it is for, and the concrete rules that must be preserved as the apps evolve.
+A guide for developers working on Safewords' high-visibility "Plain mode." This document explains **why** Plain Mode exists, **who** it is for, and the concrete rules that must be preserved as the apps evolve.
 
-> Plain mode is not a theme. It is a different product, built on the same cryptography, for a different user.
+> Plain Mode is not a theme. It is a different product, built on the same cryptography, for a different user.
+
+## Status: default since v1.3
+
+Pre-v1.3, Plain Mode was an **opt-in** accessibility variant reachable via Settings → "High visibility mode." The standard tabbed UI was the front door.
+
+**v1.3 inverted that.** Plain Mode is now the **default home** for every user on first launch. The big-word, big-button layout is the front door. The standard tabbed UI demotes to "Advanced view," opt-in via a gear icon in the Plain home top-right. The view preference is sticky — once a user picks Advanced, they stay there until they toggle back.
+
+Reasoning: under stress, the home screen should already be the call-decision screen. There's no second tab to hunt for. Plain Mode was always the right design; the v1.3 work was relabeling it as the default rather than the fallback.
+
+The legacy "High visibility mode" toggle in Settings still exists and still works as a separate control — it forces Plain UX even when a user has explicitly opted into Advanced view. Two flags coexist:
+- `advanced_view_enabled` (v1.3) — opt-in to the tabbed UI
+- `plain_mode` (v1.0) — accessibility forcing of the Plain UX regardless of advanced view
+
+The default for both is "Plain wins": fresh installs see Plain home. The `advanced_view_enabled` toggle is the user-facing knob; `plain_mode` is the historical accessibility setting that's still honored.
 
 ---
 

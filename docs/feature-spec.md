@@ -1,5 +1,21 @@
 # Safewords Mobile — Feature Specification
 
+## Current state (2026-05-01)
+
+Both apps are **shipped to internal testing tracks at v1.3.1**:
+- Android: versionCode 15 / versionName 1.3.1 on Play internal track (completed)
+- iOS: marketing 1.3.1 / build 7 on TestFlight Beta Build Review
+
+What's actually built: the v1.3 best-in-class design (`docs/v1.3-best-in-class-design.md`) is fully shipped on both platforms. See `docs/v1.3-architecture.md` for the as-built reference. This original spec captures the Phase 1/2/3 product brief; the Phase 1 features below correspond to v1.0 work, with everything from F1 (TOTP) through F5 (main app screens) shipped in v1.0–v1.1, F6 (SMS fallback) deferred indefinitely, F8 (challenge/response) shipped in v1.3 as the **challenge / answer primitive**, and F9 (emergency override) shipped in v1.3 as the **static override primitive**.
+
+Major surface area added beyond the original spec:
+
+- **BIP39 24-word recovery phrase** (v1.2) — backup/restore for the group seed
+- **Verification primitives as a first-class concept** (v1.3) — rotating word / challenge-answer / static override / numeric, all configurable per-group
+- **Plain Mode is the default home** (v1.3) — was opt-in accessibility variant pre-v1.3
+- **Native printable cards** (v1.3) — protocol, override, C/A wallet + protocol, recovery phrase, group invite; biometric-gated
+- **Demo mode** (v1.3.1) — "Try without a group" path; cross-platform synthetic seed
+
 ## Overview
 
 A native mobile app (iOS + Android) that generates **time-based rotating safewords** shared across family members' devices. Uses the same cryptographic principle as TOTP (Time-based One-Time Password) but outputs human-readable words instead of 6-digit codes.
@@ -180,6 +196,58 @@ interface Member {
 - Displayed in group settings under "Emergency"
 - Single-use: after use, must regenerate
 - Serves as fallback when someone can't access their device
+
+**Shipped in v1.3 as the static override primitive** with one design refinement: not stored alongside the seed, deterministically derived FROM the seed (`HMAC(seed, "safewords/static-override/v1")`). Reprintable but not regeneratable — rotating the group seed is the only way to invalidate. Biometric-gated reveal sheet. Printable card under Safety Cards. See `docs/v1.3-architecture.md` for derivation details.
+
+---
+
+## Phase 4 (post-v1.0 additions)
+
+### F10. BIP39 Recovery Phrase
+
+**What**: 24-word backup of a group's 256-bit seed, biometric-gated, encoded per BIP39 English entropy-only.
+
+**Shipped in v1.2.0** (Android versionCode 13, iOS build 4). Settings → Security → "Back up seed phrase". Restore via Onboarding → "Join with recovery phrase". Cross-platform contract at `/shared/recovery-vectors.json`.
+
+### F11. Verification Primitives
+
+**What**: A group can have one or more verification shapes active. Each is deterministic from the seed; the call-screen UX adapts to which are enabled.
+
+**Shipped in v1.3.0**. Four primitives ship:
+- **Rotating word** — the original v1.0 TOTP shape
+- **Numeric** — same TOTP, rendered as 6 decimal digits (RFC 4226 dynamic truncation)
+- **Static override** (see F9 above)
+- **Challenge / answer** — 100-row deterministic group table; ask one phrase, expect a paired phrase back (see F8 above)
+
+Group config gains `schemaVersion: 2` + `primitives` object. v1.2 groups auto-migrate on read with `rotatingWord.enabled = true`. Test contract at `/shared/primitive-vectors.json` and `/shared/migration-vectors.json`. See `docs/v1.3-architecture.md`.
+
+### F12. Plain Mode as Default
+
+**What**: The big-word, big-button home screen is the default front door. Tabbed UI demotes to "Advanced view", opt-in via Settings.
+
+**Shipped in v1.3.0**. Sticky preference (`advanced_view_enabled` boolean). Gear icon in Plain home routes to Settings, which lives under Advanced.
+
+### F13. Native Printable Safety Cards
+
+**What**: Protocol card, static override card, challenge/answer wallet (24 rows) + protocol (100 rows), recovery phrase card, group invite card. Rendered natively, no webview, no network round-trip.
+
+**Shipped in v1.3.0**. Sensitivity tiers: protocol = low (no gate), all others = high (biometric-gated). Copy in `/shared/safety-card-copy.json`. Render pipelines: Compose → Bitmap → `PrintHelper` (Android), SwiftUI → `UIGraphicsImageRenderer` → `UIPrintInteractionController` (iOS). See `docs/safety-cards.md`.
+
+### F14. Demo Mode
+
+**What**: "Try without a group" path on onboarding. User explores the app with a synthetic group + hardcoded seed before committing to create or join a real group.
+
+**Shipped in v1.3.1**. Cross-platform parity (same demo seed bytes on iOS and Android). Demo banner in Plain home; tap to exit demo + switch to real onboarding. See `docs/demo-mode.md`.
+
+---
+
+## Deferred / future
+
+- **F6 (SMS Fallback)** — defunct. Modern Android SMS APIs require declaring the app as a default SMS handler, which is incompatible with our zero-permission, single-purpose stance. Won't ship.
+- **F7 (Push Notifications)** — possible v1.4+. Local notifications only (still no server). Low priority.
+- **Pair mode** — per-contact rotating C/A. Deferred to v1.5+ until member identity is crypto-stable across devices and recovery.
+- **Agent Circle** — verification primitive for agentic systems. Separate repo `safewords-agent`, not part of consumer app. Deferred to v1.5+.
+- **Expiring invites** — until they exist, the group invite QR is treated as seed-equivalent (high sensitivity).
 
 ---
 

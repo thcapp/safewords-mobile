@@ -300,3 +300,41 @@ Each prototype screen mapped to its shipped native counterpart.
 - **Biggest visual regression from spec:** missing custom fonts. The
   system-serif fallback reads "nice app" instead of "designed object."
   Fix is small (register `.ttf` / `.otf`) and high-value.
+
+---
+
+## Appendix: post-handoff additions
+
+Work that landed after the original 2026-04-20 design handoff. Captured here so reviewers know what's new vs. what was specified.
+
+### v1.2 (Android versionCode 13, iOS build 4) — 2026-04-29
+
+- BIP39 24-word recovery phrase encoding (entropy-only, contract at `/shared/recovery-vectors.json`)
+- Settings → Security → "Back up seed phrase" — biometric-gated 4×6 grid
+- Onboarding "Restore" path accepts 24-word phrase or 64-char hex seed
+- Recovery card type added under Safety Cards (in v1.3)
+
+### v1.3 (Android versionCode 14, iOS build 5/7) — 2026-04-30
+
+Major new surface area not in the original design handoff:
+
+- **Plain Mode promoted to default home** for every user. Tabbed UI demoted to "Advanced view" reachable via a gear icon. Sticky preference.
+- **Verification primitives** as a first-class group concept: rotating word, numeric (6-digit), static override, challenge/answer (100-row group table). All deterministic from the seed; group config schema bumped to v2 with auto-migration of v1.2 groups.
+- **Native printable Safety Cards**: protocol (low sensitivity, no gate), static override / C/A wallet (24 rows) / C/A protocol (100 rows) / recovery phrase / group invite (all high sensitivity, biometric-gated). Compose → Bitmap → `PrintHelper` (Android) and SwiftUI → `UIGraphicsImageRenderer` → `UIPrintInteractionController` (iOS). Zero network.
+- **ChallengeSheet** — "Ask: APPLE / Expect: ORANGE" + binary "They said it" / "Doesn't match" buttons, plus result panel with hang-up-and-call-back guidance.
+- **OverrideRevealScreen** — biometric-gated reveal of the static override word.
+
+These features have no dedicated visual handoff from Claude Design — they were specced in `docs/v1.3-best-in-class-design.md` (claude + codex iteration) and built in the existing Ink theme. Claude Design hasn't yet produced refined visuals for the cards, ChallengeSheet, or override reveal; iteration on those is open work.
+
+### v1.3.1 (Android versionCode 15, iOS build 7) — 2026-05-01
+
+- **Demo mode** — "Try without a group" path on onboarding panel 1. Drops users into a synthetic group (`Demo · TIGER`, hardcoded seed `TIGER-DEMO-SAFEWORDS-V13-DEMO-!!`) with all primitives enabled so they can explore before committing. Plain home shows a "DEMO MODE / Set up your real group →" banner. Cross-platform parity (same demo seed bytes on iOS and Android).
+- **Defensive recovery wordlist load** — `Bip39` init now throws `MissingWordlist` / `InvalidWordlistCount` instead of crashing if the bundle resource is absent. Surfaced on iOS where archive builds were dropping the bip39-english.txt resource; fix landed both as resource-bundling cleanup AND as a defensive code path.
+- **iOS widget resource fix** — widget extension was missing the `Copy Widget Runtime Resources` build script that the main app target had; widget showed "Error" instead of the rotating word. Fixed.
+
+### Open visual work
+
+- Custom fonts (Fraunces serif + Atkinson Hyperlegible) — still not registered on either platform.
+- Card visual polish — current cards are functional but not visually refined; could benefit from a Claude Design pass.
+- ChallengeSheet polish — current pass uses the Ink theme primitives; haven't received a design treatment for the binary-button result panel.
+- Demo banner — current treatment is a flat accent strip; a more obviously-disposable visual style would be clearer.
