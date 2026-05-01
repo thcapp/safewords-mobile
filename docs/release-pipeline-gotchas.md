@@ -529,3 +529,48 @@ time of writing).
 
 **Total time: ~25 minutes of iteration.** Most of those failures were
 preventable with this doc up front.
+
+---
+
+## iOS — Info.plist version macros are mandatory when GENERATE_INFOPLIST_FILE=NO
+
+When we switched off `INFOPLIST_VALUES` and adopted explicit `Info.plist`
+files (commit `a2dcf48`), both `Safewords/Info.plist` and
+`SafewordsWidget/Info.plist` had **hardcoded** `CFBundleShortVersionString`
+and `CFBundleVersion` values. That made every subsequent
+`MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` bump in `project.yml`
+silently dead — the IPA always shipped the original frozen values.
+
+We discovered this when the v1.2.0 / build 4 upload was rejected by
+TestFlight as a duplicate of the previously uploaded build 3:
+
+```
+ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE
+The bundle version must be higher than the previously uploaded version: '3'.
+pointer: /data/attributes/cfBundleVersion
+```
+
+The IPA had build "3" because the Info.plist literal was "3", regardless
+of the `CURRENT_PROJECT_VERSION: "4"` setting in project.yml.
+
+### The fix
+
+Both Info.plist files MUST reference build settings via macros:
+
+```xml
+<key>CFBundleShortVersionString</key>
+<string>$(MARKETING_VERSION)</string>
+<key>CFBundleVersion</key>
+<string>$(CURRENT_PROJECT_VERSION)</string>
+```
+
+Then bumping in `project.yml` actually flows through to the IPA.
+
+### Lesson
+
+**Any `$(...)` macro that the Xcode build settings system would otherwise
+fill in MUST appear in Info.plist that way — never as a literal.** Same
+goes for `CFBundleIdentifier = $(PRODUCT_BUNDLE_IDENTIFIER)`,
+`CFBundleExecutable = $(EXECUTABLE_NAME)`, etc. If you ever convert
+`INFOPLIST_VALUES` config to a static plist, audit every value that was
+previously synthesized.
