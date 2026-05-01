@@ -20,8 +20,15 @@ default_platform(:android)
 OUTPUT_DIR = File.expand_path("../../../output/play-store/v2", __dir__)
 AAB_PATH = "#{OUTPUT_DIR}/app-release.aab"
 
-# Read keystore creds from ~/.gradle/safewords.properties on the build host.
-# Don't put them in version control.
+# Read keystore creds from ~/keystores/safewords-release.password on the build
+# host. Don't put them in version control.
+#
+# We export env vars BEFORE the gradle invocation in a single shell string,
+# rather than passing them via fastlane's sh(env:) param — the latter doesn't
+# propagate through the "cd .. && ./gradlew" composite into the gradle JVM
+# subprocess, so the signing config falls back to an empty password and the
+# build fails with "keystore password was incorrect" even though the actual
+# password is valid.
 def keystore_env
   {
     "SAFEWORDS_KEYSTORE_PATH"     => "#{ENV['HOME']}/keystores/safewords-release.jks",
@@ -31,11 +38,18 @@ def keystore_env
   }
 end
 
+# Build a single-line `KEY=value KEY2=value2 ...` prefix that we splice into
+# the shell command directly. Values are escaped with shellwords.
+def keystore_env_prefix
+  require "shellwords"
+  keystore_env.map { |k, v| "#{k}=#{Shellwords.escape(v)}" }.join(" ")
+end
+
 platform :android do
 
   desc "Build a signed release AAB and stage it in the play-store output directory"
   lane :build do
-    sh("cd .. && ./gradlew clean :app:bundleRelease", env: keystore_env)
+    sh("cd .. && #{keystore_env_prefix} ./gradlew clean :app:bundleRelease")
     sh("mkdir -p #{OUTPUT_DIR}")
     sh("cp ../app/build/outputs/bundle/release/app-release.aab #{OUTPUT_DIR}/")
 
