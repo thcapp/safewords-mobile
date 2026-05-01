@@ -6,6 +6,8 @@ enum RecoveryPhraseError: Error, Equatable {
     case wrongWordCount
     case unknownWord(index: Int, word: String)
     case badChecksum
+    case missingWordlist
+    case invalidWordlistCount(Int)
 
     var code: String {
         switch self {
@@ -17,6 +19,10 @@ enum RecoveryPhraseError: Error, Equatable {
             return "UNKNOWN_WORD"
         case .badChecksum:
             return "BAD_CHECKSUM"
+        case .missingWordlist:
+            return "MISSING_WORDLIST"
+        case .invalidWordlistCount:
+            return "INVALID_WORDLIST"
         }
     }
 
@@ -30,6 +36,10 @@ enum RecoveryPhraseError: Error, Equatable {
             return "Word \(index) is not in the recovery word list: \"\(word)\"."
         case .badChecksum:
             return "Recovery phrase checksum is invalid. Check the words and order."
+        case .missingWordlist:
+            return "Recovery word list is unavailable. Use the raw seed backup or reinstall the app."
+        case let .invalidWordlistCount(count):
+            return "Recovery word list is invalid. Expected 2048 words, found \(count)."
         }
     }
 }
@@ -51,11 +61,10 @@ struct Bip39 {
     let wordlist: [String]
     private let wordIndex: [String: Int]
 
-    init(wordlist: [String]) {
-        precondition(
-            wordlist.count == Self.expectedVocabularySize,
-            "BIP39 English wordlist must have \(Self.expectedVocabularySize) words (got \(wordlist.count))"
-        )
+    init(wordlist: [String]) throws {
+        guard wordlist.count == Self.expectedVocabularySize else {
+            throw RecoveryPhraseError.invalidWordlistCount(wordlist.count)
+        }
         self.wordlist = wordlist
         self.wordIndex = Dictionary(uniqueKeysWithValues: wordlist.enumerated().map { ($0.element, $0.offset) })
     }
@@ -163,31 +172,50 @@ struct Bip39 {
 }
 
 enum RecoveryPhrase {
-    private static let bip39: Bip39 = {
-        Bip39(wordlist: loadWordlist(from: .main))
+    private static let bip39Result: Result<Bip39, Error> = {
+        Result { try Bip39(wordlist: loadWordlist(from: .main)) }
     }()
 
     static func encode(seed: Data) throws -> String {
-        try bip39.encode(seed: seed)
+        try bip39().encode(seed: seed)
     }
 
     static func decode(input: String) throws -> Data {
-        try bip39.decode(input: input)
+        try bip39().decode(input: input)
     }
 
     static func normalize(input: String) -> [String] {
-        bip39.normalize(input: input)
+        (try? bip39().normalize(input: input)) ?? fallbackNormalize(input: input)
     }
 
-    static func loadWordlist(from bundle: Bundle) -> [String] {
+    static func loadWordlist(from bundle: Bundle) throws -> [String] {
         guard let url = bundle.url(forResource: "bip39-english", withExtension: "txt"),
               let raw = try? String(contentsOf: url, encoding: .utf8) else {
-            fatalError("bip39-english.txt is missing from bundle resources")
+            throw RecoveryPhraseError.missingWordlist
         }
         return raw
             .split(separator: "\n")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
+    }
+
+    private static func bip39() throws -> Bip39 {
+        switch bip39Result {
+        case let .success(bip39):
+            return bip39
+        case let .failure(error):
+            throw error
+        }
+    }
+
+    private static func fallbackNormalize(input: String) -> [String] {
+        let normalized = input.decomposedStringWithCompatibilityMapping
+        let lowered = normalized
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased(with: Locale(identifier: "en_US_POSIX"))
+
+        guard !lowered.isEmpty else { return [] }
+        return lowered.split(whereSeparator: \.isWhitespace).map(String.init)
     }
 }
 

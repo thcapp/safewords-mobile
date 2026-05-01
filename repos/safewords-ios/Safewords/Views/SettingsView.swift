@@ -104,7 +104,7 @@ struct SettingsView: View {
                     }
 
                     VStack(spacing: 4) {
-                        Text("Safewords v1.3 · Offline-first")
+                        Text("Safewords v1.3.1 · Offline-first")
                         Text("No server. No account. No data collection.")
                     }
                     .font(Fonts.body(11))

@@ -1,1 +1,1 @@
-v1.3.0 — Verification primitives. Plain Mode is now the default home screen. New: static override, challenge/answer, numeric word format, and printable safety cards.
+v1.3.1 — Fixes recovery phrase generation in TestFlight builds and adds a demo mode so you can look around before creating a real group.

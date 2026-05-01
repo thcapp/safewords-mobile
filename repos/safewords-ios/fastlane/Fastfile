@@ -1,4 +1,5 @@
 require "json"
+require "shellwords"
 require "spaceship"
 
 default_platform(:ios)
@@ -7,7 +8,7 @@ APP_IDENTIFIER = "app.thc.safewords"
 WIDGET_IDENTIFIER = "app.thc.safewords.widget"
 APP_IDENTIFIERS = [APP_IDENTIFIER, WIDGET_IDENTIFIER].freeze
 APP_STORE_NAME = "Safewords - Verify Identity"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.3.1"
 SCHEME = "Safewords"
 
 IOS_ROOT = File.expand_path("..", __dir__)
@@ -279,6 +280,9 @@ platform :ios do
         provisioningProfiles: appstore_profile_names
       }
     )
+    ["bip39-english.txt", "safety-card-copy.json"].each do |resource|
+      sh("unzip -l #{Shellwords.escape(IPA_PATH)} | grep -q #{Shellwords.escape(resource)}")
+    end
     UI.success("Built IPA at #{IPA_PATH}")
   end
 

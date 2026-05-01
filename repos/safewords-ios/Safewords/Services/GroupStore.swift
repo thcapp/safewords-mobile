@@ -9,6 +9,9 @@ final class GroupStore {
     /// All groups, sorted by creation date.
     private(set) var groups: [Group] = []
 
+    /// Demo mode uses a non-persisted group/seed so users can explore first.
+    private(set) var demoMode = false
+
     /// The currently selected group ID (persisted).
     var selectedGroupID: UUID? {
         didSet {
@@ -34,11 +37,13 @@ final class GroupStore {
         static let groups = "safewords.groups"
         static let selectedGroup = "safewords.selectedGroupID"
         static let emergencyOverridePrefix = "safewords.emergencyOverride."
+        static let demoMode = "safewords.demoMode"
     }
 
     init() {
         defaults = UserDefaults(suiteName: KeychainService.appGroupID)
         loadGroups()
+        loadDemoMode()
         loadSelectedGroup()
     }
 
@@ -52,6 +57,7 @@ final class GroupStore {
         creatorName: String,
         seed providedSeed: Data? = nil
     ) -> Group? {
+        exitDemoMode()
         let seed = providedSeed ?? TOTPDerivation.generateSeed()
         let creator = Member(name: creatorName, role: .creator)
         let group = Group(name: name, interval: interval, members: [creator])
@@ -70,6 +76,7 @@ final class GroupStore {
     /// Create a group from a scanned QR code (joining an existing group).
     @discardableResult
     func joinGroup(name: String, seed: Data, interval: RotationInterval, memberName: String) -> Group? {
+        exitDemoMode()
         let member = Member(name: memberName, role: .member)
         let group = Group(name: name, interval: interval, members: [member])
 
@@ -141,6 +148,10 @@ final class GroupStore {
 
     /// Delete a group and its seed.
     func deleteGroup(_ groupID: UUID) {
+        if groupID == Self.demoGroupID {
+            exitDemoMode()
+            return
+        }
         KeychainService.deleteSeed(forGroup: groupID)
         groups.removeAll { $0.id == groupID }
         defaults?.removeObject(forKey: Keys.emergencyOverridePrefix + groupID.uuidString)
@@ -170,27 +181,50 @@ final class GroupStore {
     /// Delete all local group metadata, seeds, and per-group fallback words.
     func resetAllData() {
         for id in groups.map(\.id) {
+            guard id != Self.demoGroupID else { continue }
             KeychainService.deleteSeed(forGroup: id)
             defaults?.removeObject(forKey: Keys.emergencyOverridePrefix + id.uuidString)
         }
         groups.removeAll()
         saveGroups()
         selectedGroupID = nil
+        demoMode = false
+        defaults?.set(false, forKey: Keys.demoMode)
         KeychainService.deleteAllSeeds()
+    }
+
+    // MARK: - Demo Mode
+
+    func enterDemoMode() {
+        guard groups.filter({ $0.id != Self.demoGroupID }).isEmpty else { return }
+        demoMode = true
+        defaults?.set(true, forKey: Keys.demoMode)
+        groups = [Self.demoGroup]
+        selectedGroupID = Self.demoGroupID
+    }
+
+    func exitDemoMode() {
+        guard demoMode || groups.contains(where: { $0.id == Self.demoGroupID }) else { return }
+        demoMode = false
+        defaults?.set(false, forKey: Keys.demoMode)
+        groups.removeAll { $0.id == Self.demoGroupID }
+        if selectedGroupID == Self.demoGroupID {
+            selectedGroupID = groups.first?.id
+        }
     }
 
     // MARK: - Safeword Derivation
 
     /// Get the current safeword for a group (capitalized for display).
     func currentSafeword(for group: Group) -> String? {
-        guard let seed = KeychainService.getSeed(forGroup: group.id) else { return nil }
+        guard let seed = seed(for: group.id) else { return nil }
         let timestamp = Date().timeIntervalSince1970
         return displayValue(for: group, seed: seed, timestamp: timestamp)
     }
 
     /// Get the current safeword for a group at a specific timestamp.
     func safeword(for group: Group, at timestamp: TimeInterval) -> String? {
-        guard let seed = KeychainService.getSeed(forGroup: group.id) else { return nil }
+        guard let seed = seed(for: group.id) else { return nil }
         return displayValue(for: group, seed: seed, timestamp: timestamp)
     }
 
@@ -218,6 +252,9 @@ final class GroupStore {
 
     /// Get the seed data for a group (for QR sharing).
     func seed(for groupID: UUID) -> Data? {
+        if demoMode, groupID == Self.demoGroupID {
+            return Self.demoSeed
+        }
         KeychainService.getSeed(forGroup: groupID)
     }
 
@@ -226,7 +263,8 @@ final class GroupStore {
     private func saveGroups() {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .secondsSince1970
-        if let data = try? encoder.encode(groups) {
+        let persistedGroups = groups.filter { $0.id != Self.demoGroupID }
+        if let data = try? encoder.encode(persistedGroups) {
             defaults?.set(data, forKey: Keys.groups)
         }
     }
@@ -236,7 +274,21 @@ final class GroupStore {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .secondsSince1970
         if let decoded = try? decoder.decode([Group].self, from: data) {
-            groups = decoded.sorted { $0.createdAt < $1.createdAt }
+            groups = decoded
+                .filter { $0.id != Self.demoGroupID }
+                .sorted { $0.createdAt < $1.createdAt }
+        }
+    }
+
+    private func loadDemoMode() {
+        demoMode = defaults?.bool(forKey: Keys.demoMode) ?? false
+        guard demoMode else { return }
+
+        if groups.isEmpty {
+            groups = [Self.demoGroup]
+        } else {
+            demoMode = false
+            defaults?.set(false, forKey: Keys.demoMode)
         }
     }
 
@@ -248,4 +300,26 @@ final class GroupStore {
             selectedGroupID = groups.first?.id
         }
     }
+
+    private static let demoGroupID = UUID(uuidString: "00000000-0000-0000-0000-00000000d013")!
+
+    private static let demoSeed = Data([
+        0x54, 0x49, 0x47, 0x45, 0x52, 0x2d, 0x44, 0x45,
+        0x4d, 0x4f, 0x2d, 0x53, 0x41, 0x46, 0x45, 0x57,
+        0x4f, 0x52, 0x44, 0x53, 0x2d, 0x56, 0x31, 0x33,
+        0x2d, 0x44, 0x45, 0x4d, 0x4f, 0x2d, 0x21, 0x21
+    ])
+
+    private static let demoGroup = Group(
+        id: demoGroupID,
+        name: "Demo · TIGER",
+        interval: .daily,
+        primitives: PrimitivesConfig(
+            rotatingWord: RotatingWordConfig(enabled: true, intervalSeconds: RotationInterval.daily.seconds, wordFormat: .adjectiveNounNumber),
+            challengeAnswer: ChallengeAnswerConfig(enabled: true, tableVersion: 1, rowCount: 100),
+            staticOverride: StaticOverrideConfig(enabled: true, derivationVersion: 1)
+        ),
+        members: [Member(name: "Demo User", role: .creator, joinedAt: Date(timeIntervalSince1970: 0))],
+        createdAt: Date(timeIntervalSince1970: 0)
+    )
 }

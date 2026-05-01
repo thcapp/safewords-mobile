@@ -13,6 +13,8 @@ struct OnboardingView: View {
     @State private var groupName = "Family"
     @State private var creatorName = ""
     @State private var pendingSeed: Data?
+    @State private var pendingRecoveryCode: String?
+    @State private var showingRawSeedBackup = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -118,7 +120,7 @@ struct OnboardingView: View {
             flow = .create
         case .create:
             if pendingSeed == nil {
-                pendingSeed = TOTPDerivation.generateSeed()
+                generateRecoverySeed()
             } else {
                 createGroup()
             }
@@ -135,9 +137,25 @@ struct OnboardingView: View {
         case .create:
             if pendingSeed != nil {
                 pendingSeed = nil
+                pendingRecoveryCode = nil
+                showingRawSeedBackup = false
             } else {
                 flow = .start
             }
+        }
+    }
+
+    private func generateRecoverySeed() {
+        let seed = TOTPDerivation.generateSeed()
+        pendingSeed = seed
+        do {
+            pendingRecoveryCode = try RecoveryPhrase.encode(seed: seed)
+            showingRawSeedBackup = false
+            errorMessage = nil
+        } catch {
+            pendingRecoveryCode = RecoveryPhraseService.seedHex(seed)
+            showingRawSeedBackup = true
+            errorMessage = "Couldn't load the recovery word list. Back up this raw seed instead; it restores the same group."
         }
     }
 
@@ -221,6 +239,15 @@ struct OnboardingView: View {
                     sub: "Restore an existing seed from backup.",
                     icon: "arrow.triangle.2.circlepath"
                 ) { screen = .recoveryPhrase }
+                onboardOption(
+                    title: "Look around first",
+                    sub: "Use a clearly marked demo group. Set up your real group later.",
+                    icon: "eye"
+                ) {
+                    groupStore.enterDemoMode()
+                    onboarded = true
+                    screen = .home
+                }
             }
             .padding(.top, 28)
 
@@ -240,7 +267,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 0) {
             SectionLabel(text: pendingSeed == nil ? "Create · 02" : "Seed · 03")
 
-            Text(pendingSeed == nil ? "Name your group." : "Back up this recovery phrase.")
+            Text(pendingSeed == nil ? "Name your group." : (showingRawSeedBackup ? "Back up this raw seed." : "Back up this recovery phrase."))
                 .font(Fonts.display(36))
                 .tracking(-1.2)
                 .foregroundStyle(Ink.fg)
@@ -264,14 +291,16 @@ struct OnboardingView: View {
                         .overlay(RoundedRectangle(cornerRadius: 20).stroke(Ink.rule, lineWidth: 0.5))
                 )
                 .padding(.top, 24)
-            } else if let pendingSeed {
-                Text("Anyone with these 24 words can join your group. Keep them offline.")
+            } else if pendingSeed != nil {
+                Text(showingRawSeedBackup
+                    ? "Anyone with this 64-character seed can join your group. Keep it offline."
+                    : "Anyone with these 24 words can join your group. Keep them offline.")
                     .font(Fonts.body(15))
                     .foregroundStyle(Ink.fgMuted)
                     .lineSpacing(4)
                     .padding(.top, 10)
 
-                recoveryCodeCard(seed: pendingSeed)
+                recoveryCodeCard(code: pendingRecoveryCode ?? "", rawSeed: showingRawSeedBackup)
                     .padding(.top, 24)
             }
 
@@ -300,8 +329,14 @@ struct OnboardingView: View {
         }
     }
 
-    private func recoveryCodeCard(seed: Data) -> some View {
-        let words = RecoveryPhraseService.displayCode(for: seed).split(separator: " ").map(String.init)
+    private func recoveryCodeCard(code: String, rawSeed: Bool) -> some View {
+        let words = rawSeed
+            ? stride(from: 0, to: code.count, by: 8).map { offset -> String in
+                let start = code.index(code.startIndex, offsetBy: offset)
+                let end = code.index(start, offsetBy: 8, limitedBy: code.endIndex) ?? code.endIndex
+                return String(code[start..<end])
+            }
+            : code.split(separator: " ").map(String.init)
         return VStack(alignment: .leading, spacing: 14) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
                 ForEach(Array(words.enumerated()), id: \.offset) { index, word in
@@ -321,7 +356,9 @@ struct OnboardingView: View {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 14))
                     .foregroundStyle(Ink.accent)
-                Text("Write this down before tapping Create group. It restores this group's seed if you lose your phone.")
+                Text(rawSeed
+                    ? "Write every block down before tapping Create group. This raw seed restores the same group."
+                    : "Write this down before tapping Create group. It restores this group's seed if you lose your phone.")
                     .font(Fonts.body(12.5))
                     .foregroundStyle(Ink.accent)
                     .lineSpacing(3)

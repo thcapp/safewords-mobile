@@ -7,7 +7,7 @@ final class RecoveryPhraseTests: XCTestCase {
             .split(separator: "\n")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-        return Bip39(wordlist: words)
+        return try! Bip39(wordlist: words)
     }()
 
     private lazy var vectors: RecoveryVectorFile = {

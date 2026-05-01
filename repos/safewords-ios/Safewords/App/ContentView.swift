@@ -15,18 +15,32 @@ struct ContentView: View {
                 biometricUnlocked = true
             }
         } else {
-            if plainMode && onboarded && !groupStore.groups.isEmpty && !showingPlainSettings {
-                PlainRoot {
-                    showingPlainSettings = true
-                    screen = .settings
-                }
-            } else {
-                mainRoot
-                    .onChange(of: screen) { _, newValue in
-                        if newValue != .settings {
-                            showingPlainSettings = false
-                        }
+            ZStack(alignment: .top) {
+                if plainMode && onboarded && !groupStore.groups.isEmpty && !showingPlainSettings {
+                    PlainRoot {
+                        showingPlainSettings = true
+                        screen = .settings
                     }
+                } else {
+                    mainRoot
+                        .onChange(of: screen) { _, newValue in
+                            if newValue != .settings {
+                                showingPlainSettings = false
+                            }
+                        }
+                }
+
+                if groupStore.demoMode {
+                    DemoModeBanner {
+                        groupStore.exitDemoMode()
+                        onboarded = false
+                        showingPlainSettings = false
+                        screen = .onboarding
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
+                    .zIndex(10)
+                }
             }
         }
     }
@@ -89,6 +103,39 @@ struct ContentView: View {
         case .onboarding, .addMember, .qrScanner, .recoveryPhrase, .recoveryBackup, .safetyCards, .drills: return false
         default: return onboarded || !groupStore.groups.isEmpty
         }
+    }
+}
+
+private struct DemoModeBanner: View {
+    let onSetup: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Demo group")
+                    .font(Fonts.body(12, weight: .bold))
+                    .foregroundStyle(Ink.accent)
+                Text("This is not your real safeword group.")
+                    .font(Fonts.body(11.5))
+                    .foregroundStyle(Ink.fgMuted)
+            }
+            Spacer()
+            Button("Set up real group", action: onSetup)
+                .font(Fonts.body(12.5, weight: .semibold))
+                .foregroundStyle(Ink.accentInk)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(Capsule().fill(Ink.accent))
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Ink.bgElev)
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Ink.accent.opacity(0.6), lineWidth: 0.8))
+                .shadow(color: .black.opacity(0.35), radius: 22, y: 8)
+        )
     }
 }
 
