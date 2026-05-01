@@ -38,18 +38,26 @@ def keystore_env
   }
 end
 
-# Build a single-line `KEY=value KEY2=value2 ...` prefix that we splice into
-# the shell command directly. Values are escaped with shellwords.
-def keystore_env_prefix
-  require "shellwords"
-  keystore_env.map { |k, v| "#{k}=#{Shellwords.escape(v)}" }.join(" ")
-end
+require "shellwords"
 
 platform :android do
 
   desc "Build a signed release AAB and stage it in the play-store output directory"
   lane :build do
-    sh("cd .. && #{keystore_env_prefix} ./gradlew clean :app:bundleRelease")
+    # Write the keystore env vars to a temp file with 0600 perms, source it,
+    # then run gradle. Avoids ever printing the password to the terminal or
+    # baking it into ps argv. fastlane's sh action prints the command verbatim,
+    # so we keep the visible command opaque.
+    require "tempfile"
+    envfile = Tempfile.new("safewords-keystore")
+    begin
+      envfile.write(keystore_env.map { |k, v| "export #{k}=#{Shellwords.escape(v)}" }.join("\n") + "\n")
+      envfile.close
+      File.chmod(0o600, envfile.path)
+      sh("bash -c 'set -a; source #{Shellwords.escape(envfile.path)}; set +a; cd .. && ./gradlew clean :app:bundleRelease'")
+    ensure
+      envfile.unlink
+    end
     sh("mkdir -p #{OUTPUT_DIR}")
     sh("cp ../app/build/outputs/bundle/release/app-release.aab #{OUTPUT_DIR}/")
 
