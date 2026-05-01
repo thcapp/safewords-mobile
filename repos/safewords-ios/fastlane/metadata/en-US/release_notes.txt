@@ -1,1 +1,1 @@
-v1.3.1 — Fixes recovery phrase generation in TestFlight builds and adds a demo mode so you can look around before creating a real group.
+v1.3.1 — Fixes recovery phrase generation in TestFlight builds, restores widget word display, and adds a demo mode so you can look around before creating a real group.

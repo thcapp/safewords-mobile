@@ -280,7 +280,13 @@ platform :ios do
         provisioningProfiles: appstore_profile_names
       }
     )
-    ["bip39-english.txt", "safety-card-copy.json"].each do |resource|
+    [
+      "Payload/Safewords.app/bip39-english.txt",
+      "Payload/Safewords.app/safety-card-copy.json",
+      "Payload/Safewords.app/PlugIns/SafewordsWidget.appex/adjectives.json",
+      "Payload/Safewords.app/PlugIns/SafewordsWidget.appex/nouns.json",
+      "Payload/Safewords.app/PlugIns/SafewordsWidget.appex/safety-card-copy.json"
+    ].each do |resource|
       sh("unzip -l #{Shellwords.escape(IPA_PATH)} | grep -q #{Shellwords.escape(resource)}")
     end
     UI.success("Built IPA at #{IPA_PATH}")
