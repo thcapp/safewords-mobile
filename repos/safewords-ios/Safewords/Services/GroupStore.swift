@@ -255,7 +255,7 @@ final class GroupStore {
         if demoMode, groupID == Self.demoGroupID {
             return Self.demoSeed
         }
-        KeychainService.getSeed(forGroup: groupID)
+        return KeychainService.getSeed(forGroup: groupID)
     }
 
     // MARK: - Persistence
