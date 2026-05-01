@@ -13,10 +13,14 @@ object Primitives {
 
     private const val OVERRIDE_LABEL = "safewords/static-override/v1"
 
-    fun staticOverride(seed: ByteArray): String {
+    fun staticOverride(
+        seed: ByteArray,
+        adjectives: List<String> = WordLists.adjectives,
+        nouns: List<String> = WordLists.nouns,
+    ): String {
         require(seed.size == 32) { "Seed must be 32 bytes" }
         val hash = hmacSha256(seed, OVERRIDE_LABEL.toByteArray(Charsets.UTF_8))
-        return phraseFromHash(hash)
+        return phraseFromHash(hash, adjectives, nouns)
     }
 
     fun numeric(seed: ByteArray, intervalSeconds: Int, timestamp: Long): String {
@@ -37,7 +41,13 @@ object Primitives {
 
     data class ChallengeAnswerRow(val rowIndex: Int, val ask: String, val expect: String)
 
-    fun challengeAnswerRow(seed: ByteArray, tableVersion: Int, rowIndex: Int): ChallengeAnswerRow {
+    fun challengeAnswerRow(
+        seed: ByteArray,
+        tableVersion: Int,
+        rowIndex: Int,
+        adjectives: List<String> = WordLists.adjectives,
+        nouns: List<String> = WordLists.nouns,
+    ): ChallengeAnswerRow {
         require(seed.size == 32) { "Seed must be 32 bytes" }
         val askLabel = "safewords/challenge-answer/v$tableVersion/ask/$rowIndex"
         val expectLabel = "safewords/challenge-answer/v$tableVersion/expect/$rowIndex"
@@ -45,15 +55,21 @@ object Primitives {
         val expectHash = hmacSha256(seed, expectLabel.toByteArray(Charsets.UTF_8))
         return ChallengeAnswerRow(
             rowIndex = rowIndex,
-            ask = phraseFromHash(askHash),
-            expect = phraseFromHash(expectHash),
+            ask = phraseFromHash(askHash, adjectives, nouns),
+            expect = phraseFromHash(expectHash, adjectives, nouns),
         )
     }
 
-    fun challengeAnswerTable(seed: ByteArray, tableVersion: Int, rowCount: Int): List<ChallengeAnswerRow> =
-        (0 until rowCount).map { challengeAnswerRow(seed, tableVersion, it) }
+    fun challengeAnswerTable(
+        seed: ByteArray,
+        tableVersion: Int,
+        rowCount: Int,
+        adjectives: List<String> = WordLists.adjectives,
+        nouns: List<String> = WordLists.nouns,
+    ): List<ChallengeAnswerRow> =
+        (0 until rowCount).map { challengeAnswerRow(seed, tableVersion, it, adjectives, nouns) }
 
-    private fun phraseFromHash(hash: ByteArray): String {
+    private fun phraseFromHash(hash: ByteArray, adjectives: List<String>, nouns: List<String>): String {
         val offset = hash[31].toInt() and 0x0F
         val adjIdx = ((hash[offset].toInt() and 0x7F) shl 8 or
             (hash[offset + 1].toInt() and 0xFF)) % ADJECTIVE_COUNT
@@ -61,7 +77,7 @@ object Primitives {
             (hash[offset + 3].toInt() and 0xFF)) % NOUN_COUNT
         val number = ((hash[offset + 4].toInt() and 0x7F) shl 8 or
             (hash[offset + 5].toInt() and 0xFF)) % NUMBER_MODULUS
-        return "${WordLists.adjectives[adjIdx]} ${WordLists.nouns[nounIdx]} $number"
+        return "${adjectives[adjIdx]} ${nouns[nounIdx]} $number"
     }
 
     private fun hmacSha256(key: ByteArray, message: ByteArray): ByteArray {

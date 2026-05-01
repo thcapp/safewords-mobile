@@ -85,6 +85,8 @@ val copySharedToTestResources by tasks.registering(Copy::class) {
     from(File(sharedDir, "recovery-vectors.json"))
     from(File(sharedDir, "primitive-vectors.json"))
     from(File(sharedDir, "migration-vectors.json"))
+    from(File(projectDir, "src/main/assets/wordlists/adjectives.json"))
+    from(File(projectDir, "src/main/assets/wordlists/nouns.json"))
     into(testResourcesDir)
 }
 
@@ -141,6 +143,7 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.print)
 
     implementation(libs.androidx.glance)
     implementation(libs.androidx.glance.material3)

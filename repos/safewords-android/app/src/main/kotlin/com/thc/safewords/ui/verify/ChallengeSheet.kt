@@ -59,26 +59,26 @@ fun ChallengeSheet(groupId: String, onDone: () -> Unit) {
             table?.firstOrNull { it.rowIndex == rowIndex } ?: table?.firstOrNull()
         }
     }
-    var phase by remember { mutableStateOf(Phase.Asking) }
+    var phase by remember { mutableStateOf(ChallengePhase.Asking) }
 
     Box(modifier = Modifier.fillMaxSize().background(Ink.bg).padding(20.dp)) {
         Column(modifier = Modifier.fillMaxSize().padding(top = 60.dp)) {
             when (phase) {
-                Phase.Asking -> AskingPanel(
+                ChallengePhase.Asking -> AskingPanel(
                     row = row,
-                    onMatch = { phase = Phase.Match },
-                    onMismatch = { phase = Phase.Mismatch },
+                    onMatch = { phase = ChallengePhase.Match },
+                    onMismatch = { phase = ChallengePhase.Mismatch },
                     onAnotherRow = { rowIndex = Random.nextInt(rowCount) },
                     onClose = onDone,
                 )
-                Phase.Match -> Result(match = true, onClose = onDone)
-                Phase.Mismatch -> Result(match = false, onClose = onDone)
+                ChallengePhase.Match -> Result(match = true, onClose = onDone)
+                ChallengePhase.Mismatch -> Result(match = false, onClose = onDone)
             }
         }
     }
 }
 
-private enum class Phase { Asking, Match, Mismatch }
+private enum class ChallengePhase { Asking, Match, Mismatch }
 
 @Composable
 private fun AskingPanel(

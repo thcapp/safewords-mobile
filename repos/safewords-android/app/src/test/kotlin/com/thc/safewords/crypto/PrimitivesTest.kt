@@ -12,6 +12,14 @@ class PrimitivesTest {
         Gson().fromJson(text, object : TypeToken<PrimitiveVectorsFile>() {}.type)
     }
 
+    private val adjectives: List<String> by lazy {
+        Gson().fromJson<List<String>>(readResource("/adjectives.json"), object : TypeToken<List<String>>() {}.type)
+    }
+
+    private val nouns: List<String> by lazy {
+        Gson().fromJson<List<String>>(readResource("/nouns.json"), object : TypeToken<List<String>>() {}.type)
+    }
+
     private fun seedHex(name: String): String = when (name) {
         "seedA" -> vectors.fixtures.seedA
         "seedB" -> vectors.fixtures.seedB
@@ -23,7 +31,7 @@ class PrimitivesTest {
     @Test
     fun static_override_matches_every_vector() {
         for (v in vectors.staticOverrideVectors) {
-            val phrase = Primitives.staticOverride(bytes(v.seed))
+            val phrase = Primitives.staticOverride(bytes(v.seed), adjectives, nouns)
             assertEquals("staticOverride(${v.seed})", v.phrase, phrase)
         }
     }
@@ -39,7 +47,7 @@ class PrimitivesTest {
     @Test
     fun challenge_answer_matches_every_vector() {
         for (v in vectors.challengeAnswerVectors) {
-            val row = Primitives.challengeAnswerRow(bytes(v.seed), v.tableVersion, v.rowIndex)
+            val row = Primitives.challengeAnswerRow(bytes(v.seed), v.tableVersion, v.rowIndex, adjectives, nouns)
             assertEquals("ca.ask(${v.seed}, v${v.tableVersion}, row=${v.rowIndex})", v.ask.phrase, row.ask)
             assertEquals("ca.expect(${v.seed}, v${v.tableVersion}, row=${v.rowIndex})", v.expect.phrase, row.expect)
         }
@@ -48,7 +56,7 @@ class PrimitivesTest {
     @Test
     fun challenge_answer_table_returns_requested_row_count() {
         val seed = bytes("seedA")
-        val table = Primitives.challengeAnswerTable(seed, 1, 24)
+        val table = Primitives.challengeAnswerTable(seed, 1, 24, adjectives, nouns)
         assertEquals(24, table.size)
         assertEquals(0, table.first().rowIndex)
         assertEquals(23, table.last().rowIndex)
@@ -57,8 +65,8 @@ class PrimitivesTest {
     @Test
     fun static_override_is_deterministic_for_same_seed() {
         val seed = bytes("seedA")
-        val a = Primitives.staticOverride(seed)
-        val b = Primitives.staticOverride(seed)
+        val a = Primitives.staticOverride(seed, adjectives, nouns)
+        val b = Primitives.staticOverride(seed, adjectives, nouns)
         assertEquals(a, b)
     }
 
