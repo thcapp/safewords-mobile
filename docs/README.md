@@ -12,8 +12,9 @@ Native iOS (Swift/SwiftUI) and Android (Kotlin/Compose) apps for rotating TOTP-b
 | 2 | [feature-spec.md](feature-spec.md) | Product requirements — original spec plus Phase 4 (BIP39, primitives, Plain default, cards, demo mode). |
 | 3 | [v1.3-architecture.md](v1.3-architecture.md) | **As-built reference for v1.3** — primitives, group config schema, demo mode, native card rendering. Read after feature-spec. |
 | 4 | [v1.3-best-in-class-design.md](v1.3-best-in-class-design.md) | Locked design brief that drove v1.3 (claude + codex iteration log). |
-| 5 | [safety-cards.md](safety-cards.md) | Cards system: types, sensitivity tiers, copy schema, render pipelines, biometric gating. |
-| 6 | [demo-mode.md](demo-mode.md) | Demo seed, group, lifecycle, cross-platform parity. |
+| 5 | [safewords-mobile.md](safewords-mobile.md) | **Page-by-page reference** — every screen on both platforms, side by side, with technical implementation details. The one-stop tour. |
+| 6 | [safety-cards.md](safety-cards.md) | Cards system: types, sensitivity tiers, copy schema, render pipelines, biometric gating. |
+| 7 | [demo-mode.md](demo-mode.md) | Demo seed, group, lifecycle, cross-platform parity. |
 | 7 | [design-system.md](design-system.md) | Visual design tokens. Ink + A11Y palettes, typography, components, motion. |
 | 8 | [ios-architecture.md](ios-architecture.md) | iOS code reference. Every file, every screen, routing, widget, services, build. |
 | 9 | [android-architecture.md](android-architecture.md) | Android code reference. Module layout, every screen, navigation, Glance widget, services, Gradle. |
