@@ -16,7 +16,7 @@ struct GroupInviteCardView: View {
             VStack(alignment: .leading, spacing: 20) {
                 WarningBlock(
                     heading: template.warningHeading?.replacingGroupName(group.name),
-                    body: template.warningBody?.replacingGroupName(group.name)
+                    message: template.warningBody?.replacingGroupName(group.name)
                 )
 
                 if let qr = QRCodeService.generateQRCode(for: group, seed: seed, size: 300) {

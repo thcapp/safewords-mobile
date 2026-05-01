@@ -48,7 +48,7 @@ struct ChallengeAnswerCardView: View {
             VStack(alignment: .leading, spacing: 12) {
                 WarningBlock(
                     heading: template.warningHeading?.replacingGroupName(group.name),
-                    body: template.warningBody?.replacingGroupName(group.name)
+                    message: template.warningBody?.replacingGroupName(group.name)
                 )
 
                 VStack(spacing: 0) {

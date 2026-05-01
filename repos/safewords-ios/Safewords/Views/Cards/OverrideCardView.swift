@@ -27,7 +27,7 @@ struct OverrideCardView: View {
 
                 WarningBlock(
                     heading: template.warningHeading?.replacingGroupName(group.name),
-                    body: template.warningBody?.replacingGroupName(group.name)
+                    message: template.warningBody?.replacingGroupName(group.name)
                 )
 
                 Text(template.footer ?? "")
@@ -40,14 +40,14 @@ struct OverrideCardView: View {
 
 struct WarningBlock: View {
     let heading: String?
-    let body: String?
+    let message: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(heading ?? "Keep this private.")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(Color.black)
-            Text(body ?? "")
+            Text(message ?? "")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color.black.opacity(0.68))
                 .fixedSize(horizontal: false, vertical: true)

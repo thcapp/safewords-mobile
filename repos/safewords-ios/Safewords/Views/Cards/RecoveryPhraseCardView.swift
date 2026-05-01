@@ -20,7 +20,7 @@ struct RecoveryPhraseCardView: View {
             VStack(alignment: .leading, spacing: 18) {
                 WarningBlock(
                     heading: template.warningHeading?.replacingGroupName(group.name),
-                    body: template.warningBody?.replacingGroupName(group.name)
+                    message: template.warningBody?.replacingGroupName(group.name)
                 )
 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
