@@ -83,6 +83,8 @@ val testResourcesDir = file("src/test/resources")
 val copySharedToTestResources by tasks.registering(Copy::class) {
     from(File(sharedDir, "wordlists/bip39-english.txt"))
     from(File(sharedDir, "recovery-vectors.json"))
+    from(File(sharedDir, "primitive-vectors.json"))
+    from(File(sharedDir, "migration-vectors.json"))
     into(testResourcesDir)
 }
 
