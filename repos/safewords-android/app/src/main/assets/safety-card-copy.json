@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "purpose": "Card copy strings used by both iOS and Android native renderers. Copy is shared so the two platforms produce identical printable cards.",
+  "cards": {
+    "protocol": {
+      "sensitivity": "low",
+      "biometricGate": false,
+      "title": "Safewords Protocol",
+      "subtitle": "Ask. Listen. Hang up if it's wrong.",
+      "rules": [
+        "Ask: \"What is our Safewords word?\"",
+        "Do not say the word first.",
+        "If they cannot answer, hang up.",
+        "Call back on a number you already know."
+      ],
+      "footer": "safewords.io · Pre-agreed proof of identity",
+      "qrPayload": "https://safewords.io/app",
+      "qrCaption": "Get the app"
+    },
+    "staticOverride": {
+      "sensitivity": "high",
+      "biometricGate": true,
+      "title": "Safewords Override",
+      "subtitle": "{groupName} — emergency override word",
+      "warningHeading": "Anyone with this card can verify as {groupName}.",
+      "warningBody": "Treat it like a key. Don't photograph. Don't share over the phone. Replace by rotating the group seed if it's compromised.",
+      "footer": "Override is fixed for this group seed. Rotate the seed to change it."
+    },
+    "challengeAnswerWallet": {
+      "sensitivity": "high",
+      "biometricGate": true,
+      "title": "Challenge / Answer — {groupName}",
+      "subtitle": "First 24 rows. Both phones see the same table.",
+      "columnHeaders": ["#", "I ask", "They answer"],
+      "warningHeading": "Anyone with this card can verify as {groupName}.",
+      "warningBody": "Keep it folded in a wallet, not photographed. Replace by rotating the group seed if it's compromised."
+    },
+    "challengeAnswerProtocol": {
+      "sensitivity": "high",
+      "biometricGate": true,
+      "title": "Challenge / Answer — {groupName}",
+      "subtitle": "Full 100-row table. Both phones see the same table.",
+      "columnHeaders": ["#", "I ask", "They answer"],
+      "warningHeading": "Anyone with this card can verify as {groupName}.",
+      "warningBody": "Store this folded. Don't post on a fridge. Replace by rotating the group seed if it's compromised."
+    },
+    "recoveryPhrase": {
+      "sensitivity": "high",
+      "biometricGate": true,
+      "title": "Safewords Recovery — {groupName}",
+      "subtitle": "24-word BIP39 recovery phrase",
+      "warningHeading": "Anyone with this phrase can restore {groupName}.",
+      "warningBody": "Don't photograph. Don't store in cloud notes or email. Treat it like a wallet seed phrase.",
+      "footer": "Re-enter on Safewords (iOS or Android) to restore."
+    },
+    "groupInvite": {
+      "sensitivity": "high",
+      "biometricGate": true,
+      "title": "Join {groupName}",
+      "subtitle": "Scan to join the group on your phone.",
+      "warningHeading": "Anyone who scans this QR joins {groupName} as a full member.",
+      "warningBody": "Until expiring invites exist, this QR is seed-equivalent. Hand to one person, then destroy.",
+      "footer": "Scan in the Safewords app: Onboarding -> Join with QR"
+    }
+  }
+}

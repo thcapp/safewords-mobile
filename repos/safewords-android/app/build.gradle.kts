@@ -88,6 +88,22 @@ val copySharedToTestResources by tasks.registering(Copy::class) {
     into(testResourcesDir)
 }
 
+// /shared/safety-card-copy.json is read by CardRenderer at runtime, so it
+// needs to land in the app's assets bundle (not just test resources).
+val mainAssetsDir = file("src/main/assets")
+
+val copySharedToAssets by tasks.registering(Copy::class) {
+    from(File(sharedDir, "safety-card-copy.json"))
+    into(mainAssetsDir)
+}
+
+tasks.matching { it.name.startsWith("merge") && it.name.contains("Assets") }.configureEach {
+    dependsOn(copySharedToAssets)
+}
+tasks.matching { it.name.startsWith("process") && it.name.contains("Assets") }.configureEach {
+    dependsOn(copySharedToAssets)
+}
+
 tasks.withType<Test>().configureEach {
     dependsOn(copySharedToTestResources)
 }

@@ -56,7 +56,10 @@ fun SettingsScreen(
     onRunDrill: () -> Unit,
     onDrillHistory: () -> Unit,
     onOpenGenerator: () -> Unit = {},
-    onBackupSeedPhrase: () -> Unit = {}
+    onBackupSeedPhrase: () -> Unit = {},
+    onOpenSafetyCards: () -> Unit = {},
+    onRevealOverride: (groupId: String) -> Unit = {},
+    onRunChallenge: (groupId: String) -> Unit = {},
 ) {
     val groups by GroupRepository.groups.collectAsState()
     val activeId by GroupRepository.activeGroupId.collectAsState()
@@ -133,15 +136,27 @@ fun SettingsScreen(
                     ActionRow(
                         label = "Reveal override word",
                         value = "Show",
-                        onClick = {
-                            // TODO: biometric-gated reveal sheet (next milestone)
-                        }
+                        onClick = { onRevealOverride(active.id) }
                     )
                 }
                 Divider()
                 ToggleRow("Challenge / answer table", primitives?.challengeAnswer?.enabled == true) { on ->
                     active?.let { GroupRepository.setChallengeAnswerEnabled(it.id, on) }
                 }
+                if (primitives?.challengeAnswer?.enabled == true && active != null) {
+                    Divider()
+                    ActionRow(
+                        label = "Run challenge",
+                        value = "Open",
+                        onClick = { onRunChallenge(active.id) }
+                    )
+                }
+                Divider()
+                ActionRow(
+                    label = "Print safety cards",
+                    value = "Open",
+                    onClick = onOpenSafetyCards
+                )
             }
 
             // ─── Accessibility ───

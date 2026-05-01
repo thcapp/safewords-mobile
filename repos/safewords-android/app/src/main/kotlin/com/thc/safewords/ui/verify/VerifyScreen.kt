@@ -56,17 +56,20 @@ import com.thc.safewords.ui.theme.Ink
 private enum class Phase { Ready, Listening, Match, Mismatch }
 
 @Composable
-fun VerifyScreen() {
+fun VerifyScreen(onRunChallenge: (groupId: String) -> Unit = {}) {
     val groups by GroupRepository.groups.collectAsState()
     val activeId by GroupRepository.activeGroupId.collectAsState()
     val group = groups.firstOrNull { it.id == activeId } ?: groups.firstOrNull()
+    val primitives = group?.primitivesOrDefault()
+    val needsVerify = primitives?.challengeAnswer?.enabled == true ||
+        primitives?.staticOverride?.enabled == true
+
     var phase by remember { mutableStateOf(Phase.Ready) }
     var typed by remember { mutableStateOf("") }
 
     val currentWord = remember(group?.id) {
         val g = group ?: return@remember ""
-        val seed = GroupRepository.getGroupSeed(g.id) ?: return@remember ""
-        TOTPDerivation.deriveSafeword(seed, g.interval.seconds, System.currentTimeMillis() / 1000)
+        GroupRepository.getCurrentSafeword(g.id) ?: ""
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Ink.bg)) {
@@ -83,7 +86,11 @@ fun VerifyScreen() {
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Ask them for today's ${group?.name ?: "group"} word. Don't read it to them.",
+                    if (needsVerify) {
+                        "Ask them for today's ${group?.name ?: "group"} word. Don't read it to them."
+                    } else {
+                        "Verify isn't needed for ${group?.name ?: "this group"} right now — both phones show the same word. Add challenge / answer or a static override in Settings → Verification if you'd like a tap-to-confirm flow."
+                    },
                     color = Ink.fgMuted,
                     style = TextStyle(fontSize = 14.sp, lineHeight = 20.sp)
                 )
@@ -92,6 +99,10 @@ fun VerifyScreen() {
             Spacer(Modifier.height(30.dp))
 
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 140.dp)) {
+                if (group != null && primitives?.challengeAnswer?.enabled == true) {
+                    ChallengeAnswerPanel(onOpen = { onRunChallenge(group.id) })
+                    Spacer(Modifier.height(20.dp))
+                }
                 when (phase) {
                     Phase.Ready -> ReadyPanel(
                         typed = typed,
@@ -111,6 +122,39 @@ fun VerifyScreen() {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ChallengeAnswerPanel(onOpen: () -> Unit) {
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+            .background(Ink.bgElev)
+            .border(0.5.dp, Ink.rule, androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+            .clickable(onClick = onOpen)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Challenge / answer",
+                color = Ink.fg,
+                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "Open a row to ask. Pick from the table.",
+                color = Ink.fgMuted,
+                style = TextStyle(fontSize = 13.sp, lineHeight = 18.sp)
+            )
+        }
+        Text(
+            "Open",
+            color = Ink.fg,
+            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        )
     }
 }
 

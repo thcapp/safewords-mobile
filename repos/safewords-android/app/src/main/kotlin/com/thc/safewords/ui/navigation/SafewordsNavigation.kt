@@ -55,8 +55,11 @@ import com.thc.safewords.ui.onboarding.RecoveryPhraseScreen
 import com.thc.safewords.ui.plain.PlainRoot
 import com.thc.safewords.ui.qr.QRDisplayScreen
 import com.thc.safewords.ui.qr.QRScannerScreen
+import com.thc.safewords.ui.cards.SafetyCardsScreen
 import com.thc.safewords.ui.settings.RecoveryBackupScreen
 import com.thc.safewords.ui.settings.SettingsScreen
+import com.thc.safewords.ui.verify.ChallengeSheet
+import com.thc.safewords.ui.verify.OverrideRevealScreen
 import com.thc.safewords.ui.theme.Ink
 import com.thc.safewords.ui.verify.VerifyScreen
 
@@ -70,6 +73,13 @@ sealed class Screen(val route: String) {
     data object Drills : Screen("drills")
     data object Generator : Screen("generator")
     data object RecoveryBackup : Screen("recovery_backup")
+    data object SafetyCards : Screen("safety_cards")
+    data object Challenge : Screen("challenge/{groupId}") {
+        fun createRoute(groupId: String) = "challenge/$groupId"
+    }
+    data object OverrideReveal : Screen("override_reveal/{groupId}") {
+        fun createRoute(groupId: String) = "override_reveal/$groupId"
+    }
     data object GroupDetail : Screen("group/{groupId}") {
         fun createRoute(groupId: String) = "group/$groupId"
     }
@@ -183,7 +193,9 @@ fun SafewordsNavigation() {
                     onAddMember = { navController.navigate(Screen.Onboarding.route) }
                 )
             }
-            composable(Screen.Verify.route) { VerifyScreen() }
+            composable(Screen.Verify.route) {
+                VerifyScreen(onRunChallenge = { id -> navController.navigate(Screen.Challenge.createRoute(id)) })
+            }
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     plainMode = plainMode,
@@ -194,7 +206,10 @@ fun SafewordsNavigation() {
                     onRunDrill = { navController.navigate(Screen.Drills.route) },
                     onDrillHistory = { navController.navigate(Screen.Drills.route) },
                     onOpenGenerator = { navController.navigate(Screen.Generator.route) },
-                    onBackupSeedPhrase = { navController.navigate(Screen.RecoveryBackup.route) }
+                    onBackupSeedPhrase = { navController.navigate(Screen.RecoveryBackup.route) },
+                    onOpenSafetyCards = { navController.navigate(Screen.SafetyCards.route) },
+                    onRunChallenge = { id -> navController.navigate(Screen.Challenge.createRoute(id)) },
+                    onRevealOverride = { id -> navController.navigate(Screen.OverrideReveal.createRoute(id)) },
                 )
             }
             composable(Screen.Drills.route) {
@@ -205,6 +220,23 @@ fun SafewordsNavigation() {
             }
             composable(Screen.RecoveryBackup.route) {
                 RecoveryBackupScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Screen.SafetyCards.route) {
+                SafetyCardsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                Screen.Challenge.route,
+                arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+            ) { entry ->
+                val id = entry.arguments?.getString("groupId") ?: return@composable
+                ChallengeSheet(groupId = id, onDone = { navController.popBackStack() })
+            }
+            composable(
+                Screen.OverrideReveal.route,
+                arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+            ) { entry ->
+                val id = entry.arguments?.getString("groupId") ?: return@composable
+                OverrideRevealScreen(groupId = id, onBack = { navController.popBackStack() })
             }
             composable(
                 Screen.GroupDetail.route,
