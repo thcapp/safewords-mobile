@@ -95,7 +95,34 @@ final class GroupStore {
     func updateGroupInterval(_ groupID: UUID, interval: RotationInterval) {
         guard let index = groups.firstIndex(where: { $0.id == groupID }) else { return }
         groups[index].interval = interval
+        groups[index].primitives.rotatingWord.intervalSeconds = interval.seconds
         saveGroups()
+    }
+
+    /// Update a group's verification primitive configuration.
+    func updatePrimitives(_ groupID: UUID, _ update: (inout PrimitivesConfig) -> Void) {
+        guard let index = groups.firstIndex(where: { $0.id == groupID }) else { return }
+        update(&groups[index].primitives)
+        groups[index].primitives = groups[index].primitives.normalized(legacyInterval: groups[index].interval)
+        saveGroups()
+    }
+
+    func setWordFormat(groupID: UUID, format: WordFormat) {
+        updatePrimitives(groupID) { config in
+            config.rotatingWord.wordFormat = format
+        }
+    }
+
+    func setChallengeAnswerEnabled(groupID: UUID, enabled: Bool) {
+        updatePrimitives(groupID) { config in
+            config.challengeAnswer.enabled = enabled
+        }
+    }
+
+    func setStaticOverrideEnabled(groupID: UUID, enabled: Bool) {
+        updatePrimitives(groupID) { config in
+            config.staticOverride.enabled = enabled
+        }
     }
 
     /// Add a member to a group.
@@ -158,19 +185,33 @@ final class GroupStore {
     func currentSafeword(for group: Group) -> String? {
         guard let seed = KeychainService.getSeed(forGroup: group.id) else { return nil }
         let timestamp = Date().timeIntervalSince1970
-        return TOTPDerivation.deriveSafewordCapitalized(
-            seed: seed,
-            interval: group.interval.seconds,
-            timestamp: timestamp
-        )
+        return displayValue(for: group, seed: seed, timestamp: timestamp)
     }
 
     /// Get the current safeword for a group at a specific timestamp.
     func safeword(for group: Group, at timestamp: TimeInterval) -> String? {
         guard let seed = KeychainService.getSeed(forGroup: group.id) else { return nil }
+        return displayValue(for: group, seed: seed, timestamp: timestamp)
+    }
+
+    func hasAnyVerifyPrimitive() -> Bool {
+        groups.contains { $0.primitives.needsVerifySurface }
+    }
+
+    func verifyNeeded(for group: Group) -> Bool {
+        group.primitives.needsVerifySurface
+    }
+
+    private func displayValue(for group: Group, seed: Data, timestamp: TimeInterval) -> String {
+        let interval = group.primitives.rotatingWord.intervalSeconds > 0
+            ? group.primitives.rotatingWord.intervalSeconds
+            : group.interval.seconds
+        if group.primitives.rotatingWord.wordFormat == .numeric {
+            return Primitives.numeric(seed: seed, intervalSeconds: interval, timestamp: timestamp).code
+        }
         return TOTPDerivation.deriveSafewordCapitalized(
             seed: seed,
-            interval: group.interval.seconds,
+            interval: interval,
             timestamp: timestamp
         )
     }

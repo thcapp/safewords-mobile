@@ -6,7 +6,7 @@ struct SettingsView: View {
     @Environment(GroupStore.self) private var groupStore
     @Binding var screen: AppScreen
 
-    @AppStorage("plainMode") private var plainMode: Bool = false
+    @AppStorage("plainMode") private var plainMode: Bool = true
     @AppStorage("onboarded") private var onboarded: Bool = false
     @AppStorage("revealStyle") private var revealStyle: String = "always"
     @AppStorage("notifyOnRotation") private var notifyOnRotation: Bool = true
@@ -20,6 +20,7 @@ struct SettingsView: View {
     @State private var showEmergencySheet = false
     @State private var showWidgetInfo = false
     @State private var showBiometricUnavailable = false
+    @State private var showPrimitivesSheet = false
     @State private var emergencyWord = ""
 
     var body: some View {
@@ -30,6 +31,12 @@ struct SettingsView: View {
                     header.padding(.horizontal, 20).padding(.top, 62)
 
                     let group = groupStore.selectedGroup
+                    section(label: "View") {
+                        toggleRow("Use Plain home by default", binding: $plainMode)
+                        divider
+                        infoRow("Advanced view", value: plainMode ? "Off" : "On")
+                    }
+
                     section(label: "Rotation · \(group?.name ?? "No group")") {
                         if let group {
                             intervalPicker(group: group)
@@ -43,9 +50,19 @@ struct SettingsView: View {
                     }
 
                     section(label: "Accessibility") {
-                        toggleRow("High visibility mode", binding: $plainMode)
-                        divider
                         toggleRow("Hold to reveal word", binding: revealBinding)
+                    }
+
+                    section(label: "Group") {
+                        actionRow("Primitives", value: primitivesValue(for: group)) {
+                            showPrimitivesSheet = true
+                        }
+                        .disabled(group == nil)
+                        divider
+                        actionRow("Safety cards", value: group == nil ? "No group" : "Print") {
+                            screen = .safetyCards
+                        }
+                        .disabled(group == nil)
                     }
 
                     section(label: "Widget & Lock Screen") {
@@ -65,7 +82,7 @@ struct SettingsView: View {
                         }
                         .disabled(group == nil)
                         divider
-                        infoRow("Rotate group seed", value: "v1.2")
+                        infoRow("Rotate group seed", value: "Later")
                         divider
                         actionRow("Back up seed phrase", value: group == nil ? "No group" : "24 words") {
                             screen = .recoveryBackup
@@ -87,7 +104,7 @@ struct SettingsView: View {
                     }
 
                     VStack(spacing: 4) {
-                        Text("Safewords v1.1 · Offline-first")
+                        Text("Safewords v1.3 · Offline-first")
                         Text("No server. No account. No data collection.")
                     }
                     .font(Fonts.body(11))
@@ -124,6 +141,10 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showEmergencySheet) {
             emergencySheet
+        }
+        .sheet(isPresented: $showPrimitivesSheet) {
+            PrimitiveSettingsSheet()
+                .environment(groupStore)
         }
     }
 
@@ -331,6 +352,21 @@ struct SettingsView: View {
         return "Not set"
     }
 
+    private func primitivesValue(for group: Group?) -> String {
+        guard let group else { return "No group" }
+        var enabled: [String] = []
+        if group.primitives.rotatingWord.wordFormat == .numeric {
+            enabled.append("Digits")
+        }
+        if group.primitives.staticOverride.enabled {
+            enabled.append("Override")
+        }
+        if group.primitives.challengeAnswer.enabled {
+            enabled.append("Challenge")
+        }
+        return enabled.isEmpty ? "Word" : enabled.joined(separator: ", ")
+    }
+
     private func leaveSelectedGroup() {
         guard let group = groupStore.selectedGroup else { return }
         groupStore.deleteGroup(group.id)
@@ -346,7 +382,110 @@ struct SettingsView: View {
         groupStore.resetAllData()
         DrillService.clear()
         onboarded = false
-        plainMode = false
+        plainMode = true
         screen = .onboarding
+    }
+}
+
+private struct PrimitiveSettingsSheet: View {
+    @Environment(GroupStore.self) private var groupStore
+    @Environment(\.dismiss) private var dismiss
+
+    private var group: Group? {
+        groupStore.selectedGroup
+    }
+
+    var body: some View {
+        ZStack {
+            Ink.bg.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 18) {
+                Capsule().fill(Ink.rule).frame(width: 42, height: 4).frame(maxWidth: .infinity)
+                SectionLabel(text: "Group primitives")
+                Text(group?.name ?? "No group")
+                    .font(Fonts.display(30))
+                    .tracking(-0.9)
+                    .foregroundStyle(Ink.fg)
+
+                if let group {
+                    VStack(spacing: 0) {
+                        primitiveToggle(
+                            "Numeric word format",
+                            subtitle: "Show a 6-digit code instead of words.",
+                            isOn: Binding(
+                                get: { groupStore.selectedGroup?.primitives.rotatingWord.wordFormat == .numeric },
+                                set: { enabled in
+                                    groupStore.setWordFormat(groupID: group.id, format: enabled ? .numeric : .adjectiveNounNumber)
+                                }
+                            )
+                        )
+                        divider
+                        primitiveToggle(
+                            "Static override",
+                            subtitle: "A fixed emergency phrase derived from the group seed.",
+                            isOn: Binding(
+                                get: { groupStore.selectedGroup?.primitives.staticOverride.enabled == true },
+                                set: { groupStore.setStaticOverrideEnabled(groupID: group.id, enabled: $0) }
+                            )
+                        )
+                        divider
+                        primitiveToggle(
+                            "Challenge / answer",
+                            subtitle: "Use a deterministic challenge table and match sheet.",
+                            isOn: Binding(
+                                get: { groupStore.selectedGroup?.primitives.challengeAnswer.enabled == true },
+                                set: { groupStore.setChallengeAnswerEnabled(groupID: group.id, enabled: $0) }
+                            )
+                        )
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(Ink.bgElev)
+                            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Ink.rule, lineWidth: 0.5))
+                    )
+
+                    Text("Derived secrets are not stored in group metadata. They are recomputed from the seed when shown or printed.")
+                        .font(Fonts.body(12.5))
+                        .foregroundStyle(Ink.fgMuted)
+                        .lineSpacing(3)
+                } else {
+                    Text("Create or join a group before enabling primitives.")
+                        .font(Fonts.body(14))
+                        .foregroundStyle(Ink.fgMuted)
+                }
+
+                Spacer()
+                Button("Done") { dismiss() }
+                    .font(Fonts.body(14, weight: .semibold))
+                    .foregroundStyle(Ink.accentInk)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Capsule().fill(Ink.accent))
+            }
+            .padding(22)
+        }
+    }
+
+    private var divider: some View {
+        Rectangle().fill(Ink.rule).frame(height: 0.5).padding(.leading, 16)
+    }
+
+    private func primitiveToggle(_ title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(Fonts.body(14.5, weight: .semibold))
+                    .foregroundStyle(Ink.fg)
+                Text(subtitle)
+                    .font(Fonts.body(12.5))
+                    .foregroundStyle(Ink.fgMuted)
+                    .lineSpacing(2)
+            }
+            Spacer()
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .tint(Ink.accent)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
     }
 }

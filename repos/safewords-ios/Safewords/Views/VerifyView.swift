@@ -9,6 +9,7 @@ struct VerifyView: View {
     @State private var phase: Phase = .ready
     @State private var typed: String = ""
     @State private var pulse: Bool = false
+    @State private var showChallenge = false
 
     var body: some View {
         ZStack {
@@ -19,6 +20,8 @@ struct VerifyView: View {
                 SwiftUI.Group {
                     if groupStore.selectedGroup == nil {
                         noGroupPanel
+                    } else if let group = groupStore.selectedGroup, !groupStore.verifyNeeded(for: group) {
+                        verifyNotNeededPanel(group: group)
                     } else {
                         switch phase {
                         case .ready: readyPanel
@@ -32,6 +35,12 @@ struct VerifyView: View {
                 .padding(.top, 30)
                 .padding(.bottom, 140)
                 .frame(maxHeight: .infinity, alignment: .top)
+            }
+        }
+        .sheet(isPresented: $showChallenge) {
+            if let group = groupStore.selectedGroup,
+               let seed = groupStore.seed(for: group.id) {
+                ChallengeSheet(group: group, seed: seed)
             }
         }
     }
@@ -53,6 +62,28 @@ struct VerifyView: View {
 
     private var readyPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if let group = groupStore.selectedGroup,
+               group.primitives.challengeAnswer.enabled {
+                Button {
+                    showChallenge = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "questionmark.bubble")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text("Challenge someone")
+                            .font(Fonts.body(15, weight: .semibold))
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundStyle(Ink.accentInk)
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 18).fill(Ink.accent))
+                }
+                .buttonStyle(.plain)
+                .padding(.bottom, 18)
+            }
+
             VStack(alignment: .leading, spacing: 14) {
                 SectionLabel(text: "Their answer")
                 TextField("", text: $typed, prompt: Text("type what they said").foregroundColor(Ink.fgMuted))
@@ -121,6 +152,32 @@ struct VerifyView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 60)
+    }
+
+    private func verifyNotNeededPanel(group: Group) -> some View {
+        VStack(spacing: 18) {
+            Image(systemName: "checkmark.shield")
+                .font(.system(size: 42, weight: .light))
+                .foregroundStyle(Ink.accent)
+            Text("Verify isn't needed for \(group.name) right now")
+                .font(Fonts.display(25))
+                .tracking(-0.7)
+                .foregroundStyle(Ink.fg)
+                .multilineTextAlignment(.center)
+            Text("Both phones show the same word. Add challenge/answer or a static override in Settings → Group → Primitives if you'd like a tap-to-confirm flow.")
+                .font(Fonts.body(14))
+                .foregroundStyle(Ink.fgMuted)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+            Button("Open Primitives") { screen = .settings }
+                .font(Fonts.body(14, weight: .semibold))
+                .foregroundStyle(Ink.accentInk)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 13)
+                .background(Capsule().fill(Ink.accent))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 46)
     }
 
     private func tipRow(n: Int, title: String, sub: String) -> some View {
@@ -213,7 +270,12 @@ struct VerifyView: View {
         let override = groupStore.emergencyOverrideWord(groupID: group.id)?
             .lowercased()
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        if answer == word.lowercased() || (!answer.isEmpty && (override.map { answer == $0 } ?? false)) {
+        let staticOverride = group.primitives.staticOverride.enabled
+            ? groupStore.seed(for: group.id).map { Primitives.staticOverride(seed: $0).phrase.lowercased() }
+            : nil
+        if answer == word.lowercased()
+            || (!answer.isEmpty && (override.map { answer == $0 } ?? false))
+            || (!answer.isEmpty && (staticOverride.map { answer == $0 } ?? false)) {
             phase = .match
         } else {
             phase = .mismatch

@@ -2,11 +2,12 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(GroupStore.self) private var groupStore
-    @AppStorage("plainMode") private var plainMode: Bool = false
+    @AppStorage("plainMode") private var plainMode: Bool = true
     @AppStorage("onboarded") private var onboarded: Bool = false
     @AppStorage("requireBiometrics") private var requireBiometrics: Bool = false
     @State private var screen: AppScreen = .home
     @State private var biometricUnlocked = false
+    @State private var showingPlainSettings = false
 
     var body: some View {
         if requireBiometrics && !biometricUnlocked {
@@ -14,10 +15,18 @@ struct ContentView: View {
                 biometricUnlocked = true
             }
         } else {
-            if plainMode {
-                PlainRoot()
+            if plainMode && onboarded && !groupStore.groups.isEmpty && !showingPlainSettings {
+                PlainRoot {
+                    showingPlainSettings = true
+                    screen = .settings
+                }
             } else {
                 mainRoot
+                    .onChange(of: screen) { _, newValue in
+                        if newValue != .settings {
+                            showingPlainSettings = false
+                        }
+                    }
             }
         }
     }
@@ -42,6 +51,8 @@ struct ContentView: View {
                     case .addMember:  QRDisplayView(screen: $screen)
                     case .recoveryBackup:
                         RecoveryBackupView(screen: $screen)
+                    case .safetyCards:
+                        SafetyCardsView(screen: $screen)
                     case .qrScanner:
                         QRScannerView(
                             onJoined: { group in
@@ -66,6 +77,7 @@ struct ContentView: View {
 
             if tabBarShown {
                 CustomTabBar(active: $screen)
+                    .environment(groupStore)
                     .transition(.opacity)
             }
         }
@@ -74,7 +86,7 @@ struct ContentView: View {
 
     private var tabBarShown: Bool {
         switch screen {
-        case .onboarding, .addMember, .qrScanner, .recoveryPhrase, .recoveryBackup, .drills: return false
+        case .onboarding, .addMember, .qrScanner, .recoveryPhrase, .recoveryBackup, .safetyCards, .drills: return false
         default: return onboarded || !groupStore.groups.isEmpty
         }
     }

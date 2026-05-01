@@ -2,18 +2,63 @@ import Foundation
 
 /// A family group that shares a rotating safeword via a common seed.
 struct Group: Identifiable, Codable, Hashable {
+    var schemaVersion: Int
     let id: UUID
     var name: String
     var interval: RotationInterval
+    var primitives: PrimitivesConfig
     var members: [Member]
     let createdAt: Date
 
-    init(id: UUID = UUID(), name: String, interval: RotationInterval = .daily, members: [Member] = [], createdAt: Date = Date()) {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        interval: RotationInterval = .daily,
+        primitives: PrimitivesConfig? = nil,
+        members: [Member] = [],
+        createdAt: Date = Date()
+    ) {
+        self.schemaVersion = PrimitivesConfig.schemaVersion
         self.id = id
         self.name = name
         self.interval = interval
+        self.primitives = (primitives ?? .legacy(interval: interval)).normalized(legacyInterval: interval)
         self.members = members
         self.createdAt = createdAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case id
+        case name
+        case interval
+        case primitives
+        case members
+        case createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? PrimitivesConfig.schemaVersion
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        interval = try container.decodeIfPresent(RotationInterval.self, forKey: .interval) ?? .daily
+        primitives = (try container.decodeIfPresent(PrimitivesConfig.self, forKey: .primitives) ?? .legacy(interval: interval))
+            .normalized(legacyInterval: interval)
+        members = try container.decodeIfPresent([Member].self, forKey: .members) ?? []
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        schemaVersion = PrimitivesConfig.schemaVersion
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(PrimitivesConfig.schemaVersion, forKey: .schemaVersion)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(interval, forKey: .interval)
+        try container.encode(primitives.normalized(legacyInterval: interval), forKey: .primitives)
+        try container.encode(members, forKey: .members)
+        try container.encode(createdAt, forKey: .createdAt)
     }
 }
 

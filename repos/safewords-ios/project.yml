@@ -11,8 +11,8 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     TARGETED_DEVICE_FAMILY: "1,2"
-    MARKETING_VERSION: "1.2.0"
-    CURRENT_PROJECT_VERSION: "4"
+    MARKETING_VERSION: "1.3.0"
+    CURRENT_PROJECT_VERSION: "5"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     GENERATE_INFOPLIST_FILE: "YES"
@@ -31,6 +31,7 @@ targets:
       - path: Safewords/Data/adjectives.json
       - path: Safewords/Data/nouns.json
       - path: ../../shared/wordlists/bip39-english.txt
+      - path: ../../shared/safety-card-copy.json
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.thc.safewords
@@ -88,6 +89,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.thc.safewords.tests
     resources:
       - path: ../../shared/recovery-vectors.json
+      - path: ../../shared/primitive-vectors.json
+      - path: ../../shared/migration-vectors.json
+      - path: ../../shared/safety-card-copy.json
       - path: ../../shared/wordlists/bip39-english.txt
     dependencies:
       - target: Safewords

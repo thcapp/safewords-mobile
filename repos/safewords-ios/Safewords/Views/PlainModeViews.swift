@@ -59,13 +59,19 @@ struct BigButton: View {
 
 // ── Plain tab bar ─────────────────────────────────────────────────
 struct A11yTabBar: View {
+    @Environment(GroupStore.self) private var groupStore
     @Binding var active: PlainScreen
 
-    private let tabs: [(key: PlainScreen, label: String, icon: String)] = [
-        (.home,   "Word",  "checkmark.shield"),
-        (.verify, "Check", "phone"),
-        (.help,   "Help",  "bell"),
-    ]
+    private var tabs: [(key: PlainScreen, label: String, icon: String)] {
+        var items: [(key: PlainScreen, label: String, icon: String)] = [
+            (.home, "Word", "checkmark.shield")
+        ]
+        if groupStore.hasAnyVerifyPrimitive() {
+            items.append((.verify, "Check", "phone"))
+        }
+        items.append((.help, "Help", "bell"))
+        return items
+    }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -104,6 +110,8 @@ struct A11yTabBar: View {
 struct PlainHomeView: View {
     @Environment(GroupStore.self) private var groupStore
     var onCall: () -> Void = {}
+    var onSettings: () -> Void = {}
+    @State private var showingChallenge = false
 
     var body: some View {
         ZStack {
@@ -112,7 +120,7 @@ struct PlainHomeView: View {
                 TimelineView(.periodic(from: .now, by: 1.0)) { ctx in
                     let ts = ctx.date.timeIntervalSince1970
                     let remaining = TOTPDerivation.getTimeRemaining(
-                        interval: group.interval.seconds, timestamp: ts
+                        interval: rotationIntervalSeconds(for: group), timestamp: ts
                     )
                     content(group: group, remaining: remaining, ts: ts)
                 }
@@ -127,6 +135,7 @@ struct PlainHomeView: View {
     private func content(group: Group, remaining: TimeInterval, ts: TimeInterval) -> some View {
         let phrase = groupStore.safeword(for: group, at: ts) ?? "—"
         let humanTime = humanTimeString(remaining)
+        let title = group.primitives.rotatingWord.wordFormat == .numeric ? "YOUR CODE NOW" : "YOUR WORD NOW"
 
         return VStack(alignment: .leading, spacing: 0) {
             // Header
@@ -147,6 +156,14 @@ struct PlainHomeView: View {
                         .foregroundStyle(A11Y.fg)
                 }
                 Spacer()
+                Button(action: onSettings) {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(A11Y.fg)
+                        .frame(width: 56, height: 56)
+                        .background(Circle().fill(A11Y.bgElev).overlay(Circle().stroke(A11Y.rule, lineWidth: 2)))
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 8).padding(.bottom, 16)
 
@@ -154,7 +171,7 @@ struct PlainHomeView: View {
             VStack(spacing: 28) {
                 HStack(spacing: 8) {
                     Circle().fill(A11Y.accent).frame(width: 12, height: 12)
-                    Text("YOUR WORD TODAY")
+                    Text(title)
                         .font(A11yFonts.body(18, weight: .bold))
                         .tracking(0.3)
                         .foregroundStyle(A11Y.accent)
@@ -180,7 +197,7 @@ struct PlainHomeView: View {
                 .padding(.horizontal, 22).padding(.vertical, 16)
                 .background(Capsule().fill(A11Y.bgInset))
 
-                Text("Share this word only with your family.\nA new one comes tomorrow.")
+                Text("Ask: \"What is our word?\"\nDo not say it first.")
                     .font(A11yFonts.body(16))
                     .foregroundStyle(A11Y.fgMuted)
                     .multilineTextAlignment(.center)
@@ -193,12 +210,31 @@ struct PlainHomeView: View {
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .fill(A11Y.bgElev)
                     .overlay(RoundedRectangle(cornerRadius: 28).stroke(A11Y.rule, lineWidth: 2))
-            )
+                )
 
-            BigButton(label: "Someone is calling me", iconSystemName: "phone.fill", action: onCall)
+            if group.primitives.challengeAnswer.enabled {
+                BigButton(label: "Challenge someone", iconSystemName: "questionmark.bubble.fill") {
+                    showingChallenge = true
+                }
                 .padding(.top, 16)
+            }
+
+            if group.primitives.staticOverride.enabled {
+                Text("Static override is available in Settings → Safety cards.")
+                    .font(A11yFonts.body(15, weight: .bold))
+                    .foregroundStyle(A11Y.fgMuted)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 18).fill(A11Y.bgInset))
+                    .padding(.top, 14)
+            }
         }
         .padding(.horizontal, 18).padding(.top, 62).padding(.bottom, 120)
+        .sheet(isPresented: $showingChallenge) {
+            if let seed = groupStore.seed(for: group.id) {
+                ChallengeSheet(group: group, seed: seed)
+            }
+        }
     }
 
     private func humanTimeString(_ remaining: TimeInterval) -> String {
@@ -207,6 +243,10 @@ struct PlainHomeView: View {
         let m = (r % 3600) / 60
         if h > 0 { return "\(h) hour\(h == 1 ? "" : "s") left" }
         return "\(m) minute\(m == 1 ? "" : "s") left"
+    }
+
+    private func rotationIntervalSeconds(for group: Group) -> Int {
+        group.primitives.rotatingWord.intervalSeconds > 0 ? group.primitives.rotatingWord.intervalSeconds : group.interval.seconds
     }
 }
 
@@ -362,7 +402,7 @@ struct PlainVerifyView: View {
 
 // ── Plain Help ────────────────────────────────────────────────────
 struct PlainHelpView: View {
-    @AppStorage("plainMode") private var plainMode: Bool = false
+    @AppStorage("plainMode") private var plainMode: Bool = true
     @Environment(\.openURL) private var openURL
 
     private struct Item { let icon: String; let label: String; let sub: String }
@@ -420,7 +460,7 @@ struct PlainHelpView: View {
                     .buttonStyle(.plain)
                     .padding(.top, 22)
 
-                    BigButton(label: "Exit High Visibility Mode", variant: .ghost, iconSystemName: "arrow.uturn.left") {
+                    BigButton(label: "Open Advanced View", variant: .ghost, iconSystemName: "arrow.uturn.left") {
                         plainMode = false
                     }
                     .padding(.top, 18)
@@ -566,25 +606,21 @@ struct PlainOnboardingView: View {
 
 // ── Plain container: tab bar + current screen ─────────────────────
 struct PlainRoot: View {
-    @AppStorage("plainOnboarded") private var onboarded: Bool = false
     @State private var screen: PlainScreen = .home
+    var onSettings: () -> Void = {}
 
     var body: some View {
-        if !onboarded {
-            PlainOnboardingView()
-        } else {
-            ZStack(alignment: .bottom) {
-                SwiftUI.Group {
-                    switch screen {
-                    case .home: PlainHomeView(onCall: { screen = .verify })
-                    case .verify: PlainVerifyView()
-                    case .help: PlainHelpView()
-                    case .onboarding: PlainOnboardingView()
-                    }
+        ZStack(alignment: .bottom) {
+            SwiftUI.Group {
+                switch screen {
+                case .home: PlainHomeView(onCall: { screen = .verify }, onSettings: onSettings)
+                case .verify: PlainVerifyView()
+                case .help: PlainHelpView()
+                case .onboarding: PlainOnboardingView()
                 }
-                A11yTabBar(active: $screen)
             }
-            .background(A11Y.bg.ignoresSafeArea())
+            A11yTabBar(active: $screen)
         }
+        .background(A11Y.bg.ignoresSafeArea())
     }
 }

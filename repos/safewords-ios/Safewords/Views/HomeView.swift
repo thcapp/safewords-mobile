@@ -14,8 +14,9 @@ struct HomeView: View {
             if let group = groupStore.selectedGroup {
                 TimelineView(.periodic(from: .now, by: 1.0)) { ctx in
                     let ts = ctx.date.timeIntervalSince1970
-                    let remaining = TOTPDerivation.getTimeRemaining(interval: group.interval.seconds, timestamp: ts)
-                    let total = Double(group.interval.seconds)
+                    let interval = rotationIntervalSeconds(for: group)
+                    let remaining = TOTPDerivation.getTimeRemaining(interval: interval, timestamp: ts)
+                    let total = Double(interval)
                     let progress = 1.0 - remaining / total
                     content(group: group, progress: progress, remaining: remaining, timestamp: ts)
                 }
@@ -174,7 +175,7 @@ struct HomeView: View {
     }
 
     private func sequenceString(for group: Group, at timestamp: TimeInterval) -> String {
-        let counter = Int(timestamp) / group.interval.seconds
+        let counter = Int(timestamp) / rotationIntervalSeconds(for: group)
         return String(format: "%04d", counter % 10_000)
     }
 
@@ -187,10 +188,14 @@ struct HomeView: View {
     ) -> String {
         let remaining = hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m \(seconds)s"
         guard previewNextWord,
-              let next = groupStore.safeword(for: group, at: timestamp + Double(group.interval.seconds)) else {
+                  let next = groupStore.safeword(for: group, at: timestamp + Double(rotationIntervalSeconds(for: group))) else {
             return "rotates in \(remaining)"
         }
         return "rotates in \(remaining) · next: \(next)"
+    }
+
+    private func rotationIntervalSeconds(for group: Group) -> Int {
+        group.primitives.rotatingWord.intervalSeconds > 0 ? group.primitives.rotatingWord.intervalSeconds : group.interval.seconds
     }
 
     private func groupColor(for group: Group) -> Color {
@@ -201,5 +206,5 @@ struct HomeView: View {
 
 // App-wide screen enum used by our custom tab bar and state navigation.
 enum AppScreen: String, CaseIterable {
-    case home, groups, verify, settings, onboarding, addMember, qrScanner, recoveryPhrase, recoveryBackup, drills
+    case home, groups, verify, settings, onboarding, addMember, qrScanner, recoveryPhrase, recoveryBackup, safetyCards, drills
 }

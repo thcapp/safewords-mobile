@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CustomTabBar: View {
+    @Environment(GroupStore.self) private var groupStore
     @Binding var active: AppScreen
 
     private struct Tab: Identifiable {
@@ -10,12 +11,17 @@ struct CustomTabBar: View {
         let icon: String
     }
 
-    private let tabs: [Tab] = [
-        .init(key: .home,     label: "Word",     icon: "checkmark.shield"),
-        .init(key: .groups,   label: "Groups",   icon: "person.2"),
-        .init(key: .verify,   label: "Verify",   icon: "phone"),
-        .init(key: .settings, label: "Settings", icon: "gearshape"),
-    ]
+    private var tabs: [Tab] {
+        var items: [Tab] = [
+            .init(key: .home, label: "Word", icon: "checkmark.shield"),
+            .init(key: .groups, label: "Groups", icon: "person.2")
+        ]
+        if groupStore.hasAnyVerifyPrimitive() {
+            items.append(.init(key: .verify, label: "Verify", icon: "phone"))
+        }
+        items.append(.init(key: .settings, label: "Settings", icon: "gearshape"))
+        return items
+    }
 
     var body: some View {
         HStack(spacing: 4) {

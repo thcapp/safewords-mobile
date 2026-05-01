@@ -1,6 +1,1 @@
-v1.2.0 — BIP39 recovery phrases.
-
-- Back up your group as a 24-word recovery phrase (Settings → Security → "Back up seed phrase"). Face ID / passcode gated.
-- Restore from either a 24-word phrase or a 64-character hex seed.
-- Cross-platform contract: same words work on Android.
-- Encoding follows BIP39 English (entropy-only, no PBKDF2/passphrase).
+v1.3.0 — Verification primitives. Plain Mode is now the default home screen. New: static override, challenge/answer, numeric word format, and printable safety cards.

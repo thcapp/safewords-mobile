@@ -54,6 +54,22 @@ enum QRCodeService {
         return UIImage(cgImage: cgImage)
     }
 
+    static func generateQRCode(payload: String, size: CGFloat = 250) -> UIImage? {
+        let context = CIContext()
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(payload.utf8)
+        filter.correctionLevel = "M"
+
+        guard let outputImage = filter.outputImage else { return nil }
+        let scaleX = size / outputImage.extent.size.width
+        let scaleY = size / outputImage.extent.size.height
+        let scaledImage = outputImage.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
+        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) else {
+            return nil
+        }
+        return UIImage(cgImage: cgImage)
+    }
+
     // MARK: - Parsing
 
     /// Parse a scanned QR code string into group information.
