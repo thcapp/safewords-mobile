@@ -192,13 +192,10 @@ private fun PlainHome(onVerify: () -> Unit, onExitPlain: () -> Unit) {
 
     LaunchedEffect(g) {
         val group = g ?: return@LaunchedEffect
+        val intervalSeconds = group.primitivesOrDefault().rotatingWord.intervalSeconds
         while (true) {
-            val seed = GroupRepository.getGroupSeed(group.id)
-            if (seed != null) {
-                val now = System.currentTimeMillis() / 1000
-                phrase = TOTPDerivation.deriveSafeword(seed, group.interval.seconds, now)
-                remaining = TOTPDerivation.getTimeRemaining(group.interval.seconds)
-            }
+            phrase = GroupRepository.getCurrentSafeword(group.id) ?: ""
+            remaining = TOTPDerivation.getTimeRemaining(intervalSeconds)
             delay(1000L)
         }
     }
@@ -277,11 +274,23 @@ private fun PlainHome(onVerify: () -> Unit, onExitPlain: () -> Unit) {
             }
             Spacer(Modifier.height(28.dp))
             if (phrase.isNotEmpty()) {
-                phrase.split(" ").forEach { w ->
+                // Numeric format renders as a single block with looser tracking
+                // (digits are visually denser than words); word format keeps the
+                // line-per-word layout that emphasizes each part.
+                if (phrase.contains(' ')) {
+                    phrase.split(" ").forEach { w ->
+                        Text(
+                            w,
+                            color = A11y.fg,
+                            style = TextStyle(fontSize = 48.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.5).sp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
                     Text(
-                        w,
+                        phrase,
                         color = A11y.fg,
-                        style = TextStyle(fontSize = 48.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.5).sp),
+                        style = TextStyle(fontSize = 56.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 6.sp),
                         textAlign = TextAlign.Center
                     )
                 }

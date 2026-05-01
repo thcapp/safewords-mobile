@@ -6,7 +6,11 @@ import androidx.security.crypto.MasterKeys
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.thc.safewords.SafewordsApp
+import com.thc.safewords.crypto.Primitives as CryptoPrimitives
 import com.thc.safewords.crypto.TOTPDerivation
+import com.thc.safewords.data.Primitives
+import com.thc.safewords.data.RotatingWordPrimitive
+import com.thc.safewords.data.WordFormat
 import com.thc.safewords.model.Group
 import com.thc.safewords.model.Member
 import com.thc.safewords.model.Role
@@ -31,6 +35,7 @@ object GroupRepository {
     private const val DEFAULT_INTERVAL_KEY = "default_interval"
     private const val ACTIVE_GROUP_KEY = "active_group_id"
     private const val PLAIN_MODE_KEY = "plain_mode"
+    private const val ADVANCED_VIEW_KEY = "advanced_view_enabled"
     private const val BIOMETRIC_REQUIRED_KEY = "biometric_required"
     private const val NOTIFY_ROTATION_KEY = "notify_on_rotation"
     private const val PREVIEW_NEXT_WORD_KEY = "preview_next_word"
@@ -77,7 +82,12 @@ object GroupRepository {
         val finalSeedHex = seedHex ?: TOTPDerivation.bytesToHex(generateSeed())
 
         val creator = Member(name = creatorName, role = Role.CREATOR)
-        val group = Group(name = name, interval = interval, members = listOf(creator))
+        val group = Group(
+            name = name,
+            interval = interval,
+            members = listOf(creator),
+            primitives = defaultPrimitives(interval),
+        )
 
         if (!SecureStorageService.saveSeed(group.id, finalSeedHex)) return null
 
@@ -98,7 +108,12 @@ object GroupRepository {
         memberName: String
     ): Group? {
         val member = Member(name = memberName, role = Role.MEMBER)
-        val group = Group(name = name, interval = interval, members = listOf(member))
+        val group = Group(
+            name = name,
+            interval = interval,
+            members = listOf(member),
+            primitives = defaultPrimitives(interval),
+        )
 
         if (!SecureStorageService.saveSeed(group.id, seedHex)) return null
 
@@ -124,7 +139,57 @@ object GroupRepository {
 
     fun setRotationInterval(groupId: String, interval: RotationInterval) {
         val group = getGroup(groupId) ?: return
-        updateGroup(group.copy(interval = interval))
+        val primitives = group.primitivesOrDefault()
+        updateGroup(group.copy(
+            interval = interval,
+            primitives = primitives.copy(
+                rotatingWord = primitives.rotatingWord.copy(
+                    intervalSeconds = interval.seconds,
+                ),
+            ),
+        ))
+    }
+
+    fun setWordFormat(groupId: String, format: WordFormat) {
+        val group = getGroup(groupId) ?: return
+        val primitives = group.primitivesOrDefault()
+        updateGroup(group.copy(
+            primitives = primitives.copy(
+                rotatingWord = primitives.rotatingWord.copy(wordFormat = format),
+            ),
+        ))
+    }
+
+    fun setStaticOverrideEnabled(groupId: String, enabled: Boolean) {
+        val group = getGroup(groupId) ?: return
+        val primitives = group.primitivesOrDefault()
+        updateGroup(group.copy(
+            primitives = primitives.copy(
+                staticOverride = primitives.staticOverride.copy(enabled = enabled),
+            ),
+        ))
+    }
+
+    fun setChallengeAnswerEnabled(groupId: String, enabled: Boolean) {
+        val group = getGroup(groupId) ?: return
+        val primitives = group.primitivesOrDefault()
+        updateGroup(group.copy(
+            primitives = primitives.copy(
+                challengeAnswer = primitives.challengeAnswer.copy(enabled = enabled),
+            ),
+        ))
+    }
+
+    fun markStaticOverridePrinted(groupId: String) {
+        val group = getGroup(groupId) ?: return
+        val primitives = group.primitivesOrDefault()
+        updateGroup(group.copy(
+            primitives = primitives.copy(
+                staticOverride = primitives.staticOverride.copy(
+                    printedAt = System.currentTimeMillis() / 1000,
+                ),
+            ),
+        ))
     }
 
     fun deleteGroup(groupId: String) {
@@ -185,7 +250,34 @@ object GroupRepository {
         val group = getGroup(groupId) ?: return null
         val seed = getGroupSeed(groupId) ?: return null
         val timestamp = System.currentTimeMillis() / 1000
-        return TOTPDerivation.deriveSafeword(seed, group.interval.seconds, timestamp)
+        val rotating = group.primitivesOrDefault().rotatingWord
+        return when (rotating.wordFormat) {
+            WordFormat.NUMERIC -> CryptoPrimitives.numeric(seed, rotating.intervalSeconds, timestamp)
+            WordFormat.ADJECTIVE_NOUN_NUMBER ->
+                TOTPDerivation.deriveSafeword(seed, rotating.intervalSeconds, timestamp)
+        }
+    }
+
+    /**
+     * Deterministic group static override word derived from the seed. Returns
+     * null if the group is unknown or the seed is unavailable. The override
+     * is the same word every call for a given seed; rotate the seed to change.
+     */
+    fun getStaticOverride(groupId: String): String? {
+        val seed = getGroupSeed(groupId) ?: return null
+        return CryptoPrimitives.staticOverride(seed)
+    }
+
+    /**
+     * Deterministic challenge/answer table for a group. Returns the requested
+     * row count starting at index 0 (24 for wallet excerpt, 100 for full
+     * protocol card).
+     */
+    fun getChallengeAnswerTable(groupId: String, rowCount: Int): List<CryptoPrimitives.ChallengeAnswerRow>? {
+        val group = getGroup(groupId) ?: return null
+        val seed = getGroupSeed(groupId) ?: return null
+        val tableVersion = group.primitivesOrDefault().challengeAnswer.tableVersion
+        return CryptoPrimitives.challengeAnswerTable(seed, tableVersion, rowCount)
     }
 
     /**
@@ -212,6 +304,13 @@ object GroupRepository {
 
     fun isPlainMode(): Boolean = prefs.getBoolean(PLAIN_MODE_KEY, false)
     fun setPlainMode(enabled: Boolean) { prefs.edit().putBoolean(PLAIN_MODE_KEY, enabled).apply() }
+
+    /**
+     * v1.3 view preference. Default is Plain (Advanced disabled). Sticky once
+     * the user opts into Advanced — they stay until they toggle back.
+     */
+    fun isAdvancedView(): Boolean = prefs.getBoolean(ADVANCED_VIEW_KEY, false)
+    fun setAdvancedView(enabled: Boolean) { prefs.edit().putBoolean(ADVANCED_VIEW_KEY, enabled).apply() }
 
     fun isBiometricRequired(): Boolean = prefs.getBoolean(BIOMETRIC_REQUIRED_KEY, false)
     fun setBiometricRequired(enabled: Boolean) { prefs.edit().putBoolean(BIOMETRIC_REQUIRED_KEY, enabled).apply() }
@@ -256,6 +355,14 @@ object GroupRepository {
         SecureRandom().nextBytes(seed)
         return seed
     }
+
+    private fun defaultPrimitives(interval: RotationInterval): Primitives = Primitives(
+        rotatingWord = RotatingWordPrimitive(
+            enabled = true,
+            intervalSeconds = interval.seconds,
+            wordFormat = WordFormat.ADJECTIVE_NOUN_NUMBER,
+        ),
+    )
 
     private fun loadGroups() {
         val json = prefs.getString(GROUPS_KEY, null) ?: return

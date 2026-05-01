@@ -1,0 +1,6 @@
+v1.3.0 — Verification primitives.
+
+- Plain Mode is now the default home screen. The big-word, big-button layout is the front door.
+- New: static override word (deterministic, printable), challenge/answer table, and 6-digit numeric code format. Configure under Settings → Verification.
+- Cross-platform contract: same primitives produce the same words on iOS.
+- Tap the "Standard view" pill in the top-right of Plain home to switch to the tabbed Advanced UI; the choice is sticky.

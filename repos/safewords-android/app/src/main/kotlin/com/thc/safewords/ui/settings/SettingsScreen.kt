@@ -111,6 +111,39 @@ fun SettingsScreen(
                 }
             }
 
+            // ─── Verification primitives (v1.3) ───
+            SettingsSection("Verification · ${active?.name ?: "No group"}") {
+                val primitives = active?.primitivesOrDefault()
+                val numeric = primitives?.rotatingWord?.wordFormat == com.thc.safewords.data.WordFormat.NUMERIC
+                ToggleRow("Show as 6-digit code", numeric) { on ->
+                    active?.let {
+                        GroupRepository.setWordFormat(
+                            it.id,
+                            if (on) com.thc.safewords.data.WordFormat.NUMERIC
+                            else com.thc.safewords.data.WordFormat.ADJECTIVE_NOUN_NUMBER,
+                        )
+                    }
+                }
+                Divider()
+                ToggleRow("Static override word", primitives?.staticOverride?.enabled == true) { on ->
+                    active?.let { GroupRepository.setStaticOverrideEnabled(it.id, on) }
+                }
+                if (primitives?.staticOverride?.enabled == true && active != null) {
+                    Divider()
+                    ActionRow(
+                        label = "Reveal override word",
+                        value = "Show",
+                        onClick = {
+                            // TODO: biometric-gated reveal sheet (next milestone)
+                        }
+                    )
+                }
+                Divider()
+                ToggleRow("Challenge / answer table", primitives?.challengeAnswer?.enabled == true) { on ->
+                    active?.let { GroupRepository.setChallengeAnswerEnabled(it.id, on) }
+                }
+            }
+
             // ─── Accessibility ───
             SettingsSection("Accessibility") {
                 ToggleRow("High visibility mode", plainMode, onPlainModeChange)

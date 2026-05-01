@@ -94,7 +94,10 @@ private val tabs = listOf(
 
 @Composable
 fun SafewordsNavigation() {
-    // Plain mode is persisted in EncryptedSharedPreferences via GroupRepository.
+    // v1.3: default home is Plain Mode for everyone. Advanced view is the
+    // opt-in tabbed UX. Legacy "plainMode" pref still exists as the explicit
+    // visibility-mode toggle (separate from Advanced/Standard view).
+    var advancedView by remember { mutableStateOf(GroupRepository.isAdvancedView()) }
     var plainMode by remember { mutableStateOf(GroupRepository.isPlainMode()) }
     val groups by GroupRepository.groups.collectAsState()
 
@@ -103,6 +106,16 @@ fun SafewordsNavigation() {
             plainMode = false
             GroupRepository.setPlainMode(false)
         })
+        return
+    }
+
+    if (!advancedView) {
+        PlainRoot(
+            onExitPlain = {
+                advancedView = true
+                GroupRepository.setAdvancedView(true)
+            },
+        )
         return
     }
 
