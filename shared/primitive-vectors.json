@@ -1,0 +1,197 @@
+{
+  "version": 1,
+  "algorithm": {
+    "staticOverride": "HMAC-SHA256(seed, 'safewords/static-override/v1') -> standard word derivation",
+    "numeric": "HMAC-SHA256(seed, big-endian-int64 counter) -> dynamic truncation -> 6-digit % 1_000_000",
+    "challengeAnswer": "Per row: HMAC-SHA256(seed, 'safewords/challenge-answer/v{tableVersion}/{ask|expect}/{rowIndex}') -> standard word derivation"
+  },
+  "wordListSizes": {
+    "adjectives": 197,
+    "nouns": 300
+  },
+  "fixtures": {
+    "seedA": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+    "seedB": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "staticOverrideVectors": [
+    {
+      "seed": "seedA",
+      "offset": 12,
+      "adjIndex": 138,
+      "nounIndex": 186,
+      "number": 16,
+      "phrase": "blooming saddle 16",
+      "hashHex": "940b96449fdf87a7b914c467961688ee88a81cc90e0464810478253c76a31c8c"
+    },
+    {
+      "seed": "seedB",
+      "offset": 3,
+      "adjIndex": 55,
+      "nounIndex": 17,
+      "number": 13,
+      "phrase": "crispy gorilla 13",
+      "hashHex": "085f80f9cd0011d279cf1dccf83c03ae2a0c9d2ef4ab1869d1510eb7e99c46c3"
+    }
+  ],
+  "numericVectors": [
+    {
+      "seed": "seedA",
+      "interval": 86400,
+      "timestamp": 1741651200,
+      "note": "2025-03-11 00:00:00 UTC, daily",
+      "counter": 20158,
+      "hashHex": "ebfce99c78967ba3e54992356b5444ea5730cf6cf53fb8b5e085a83a13e79657",
+      "offset": 7,
+      "code": "229138"
+    },
+    {
+      "seed": "seedA",
+      "interval": 86400,
+      "timestamp": 1741737600,
+      "note": "2025-03-12 00:00:00 UTC, daily",
+      "counter": 20159,
+      "hashHex": "4441c1f0b86a10076a333ffce0cd0d92b0118bfae5ccb19c835da59625e3ff03",
+      "offset": 3,
+      "code": "133968"
+    },
+    {
+      "seed": "seedA",
+      "interval": 3600,
+      "timestamp": 1741651200,
+      "note": "2025-03-11 00:00:00 UTC, hourly",
+      "counter": 483792,
+      "hashHex": "b3b41d0ca30d0c74f5b3520454f3b0648c1ae9208573b6f21f645f23fa0859cb",
+      "offset": 11,
+      "code": "676272"
+    },
+    {
+      "seed": "seedA",
+      "interval": 86400,
+      "timestamp": 0,
+      "note": "epoch 0, daily",
+      "counter": 0,
+      "hashHex": "c2cce957d808d548792a6ab7940ba65963c8be6fb6778fdb8e354c69cac6df74",
+      "offset": 4,
+      "code": "973896"
+    },
+    {
+      "seed": "seedB",
+      "interval": 86400,
+      "timestamp": 1741651200,
+      "note": "2025-03-11 00:00:00 UTC, daily",
+      "counter": 20158,
+      "hashHex": "5f8e3833dc998b73cba4479726b2f2e265c1bb8d5cda98e51bef564e8533282c",
+      "offset": 12,
+      "code": "261794"
+    }
+  ],
+  "challengeAnswerVectors": [
+    {
+      "seed": "seedA",
+      "tableVersion": 1,
+      "rowIndex": 0,
+      "ask": {
+        "offset": 13,
+        "adjIndex": 51,
+        "nounIndex": 168,
+        "number": 68,
+        "phrase": "frozen garland 68",
+        "hashHex": "814d67af199a7f3bbba0586237b86083006444695a1a79a1e3d69844db88221d"
+      },
+      "expect": {
+        "offset": 3,
+        "adjIndex": 10,
+        "nounIndex": 6,
+        "number": 31,
+        "phrase": "bronze parrot 31",
+        "hashHex": "80dce12b2249da2a4f20b9619b32199cf6a0c4085afb3f76a6c1dd3b08b2f1c3"
+      }
+    },
+    {
+      "seed": "seedA",
+      "tableVersion": 1,
+      "rowIndex": 1,
+      "ask": {
+        "offset": 11,
+        "adjIndex": 192,
+        "nounIndex": 94,
+        "number": 31,
+        "phrase": "twisted granola 31",
+        "hashHex": "a9c97475c37ad6f156e1b1c602a12e2f639dd9bb7bbc550e01df1efacfcd783b"
+      },
+      "expect": {
+        "offset": 3,
+        "adjIndex": 93,
+        "nounIndex": 227,
+        "number": 12,
+        "phrase": "polite meteor 12",
+        "hashHex": "47ca6012106f0b74d877d83b17e7cfde47d4ae0e93b38be6064bc713a83aab43"
+      }
+    },
+    {
+      "seed": "seedA",
+      "tableVersion": 1,
+      "rowIndex": 23,
+      "note": "last row of 24-row wallet excerpt",
+      "ask": {
+        "offset": 15,
+        "adjIndex": 141,
+        "nounIndex": 157,
+        "number": 88,
+        "phrase": "wooded beacon 88",
+        "hashHex": "78a5635d75d57dd960f6ccbc987f1286b56b419ed021b7e5dc5f76de6e544b8f"
+      },
+      "expect": {
+        "offset": 2,
+        "adjIndex": 149,
+        "nounIndex": 162,
+        "number": 72,
+        "phrase": "ancient chisel 72",
+        "hashHex": "2f3e09d11dee30540bf6f09dfc3e08ce9bdf2fb5c3f99a7827af93d22c4eedb2"
+      }
+    },
+    {
+      "seed": "seedA",
+      "tableVersion": 1,
+      "rowIndex": 99,
+      "note": "last row of 100-row full table",
+      "ask": {
+        "offset": 3,
+        "adjIndex": 59,
+        "nounIndex": 35,
+        "number": 56,
+        "phrase": "grainy python 56",
+        "hashHex": "f7c10cdbce4c4fecd0098c2ee0e33b0e21bd0a983777ec1db2b6d96318ca2333"
+      },
+      "expect": {
+        "offset": 7,
+        "adjIndex": 62,
+        "nounIndex": 276,
+        "number": 47,
+        "phrase": "squishy fresco 47",
+        "hashHex": "cc87d2ce102f0b8fa295003d1f0c7298ca2cea2f56b34bdedea6e9dff61001f7"
+      }
+    },
+    {
+      "seed": "seedB",
+      "tableVersion": 1,
+      "rowIndex": 0,
+      "ask": {
+        "offset": 11,
+        "adjIndex": 126,
+        "nounIndex": 39,
+        "number": 79,
+        "phrase": "cloudy scorpion 79",
+        "hashHex": "78713ad2f18da7f9f1ac064e371c47b1870b71f5ee761359ae3c2697a64d4d7b"
+      },
+      "expect": {
+        "offset": 3,
+        "adjIndex": 149,
+        "nounIndex": 215,
+        "number": 77,
+        "phrase": "ancient sundial 77",
+        "hashHex": "a7270b890cd9e74da5b2a5b6e899ea1409308140de9e528d36709ceba91f66f3"
+      }
+    }
+  ]
+}
