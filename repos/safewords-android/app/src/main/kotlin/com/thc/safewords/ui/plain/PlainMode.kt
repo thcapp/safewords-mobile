@@ -760,9 +760,11 @@ private fun PlainOnboarding(onDone: () -> Unit) {
         }
 
         Spacer(Modifier.weight(1f))
-        BigButton(label = p.cta, onClick = {
-            if (step < panels.size - 1) step += 1 else onDone()
-        })
+        BigButton(
+            label = p.cta,
+            onClick = { if (step < panels.size - 1) step += 1 else onDone() },
+            testTagId = if (step < panels.size - 1) "plain-onboarding.cta-next" else "plain-onboarding.cta-done",
+        )
         if (step > 0) {
             Spacer(Modifier.height(12.dp))
             Text(
@@ -770,7 +772,7 @@ private fun PlainOnboarding(onDone: () -> Unit) {
                 color = A11y.fgMuted,
                 style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().clickable { step -= 1 }.padding(14.dp)
+                modifier = Modifier.fillMaxWidth().testTag("plain-onboarding.back").clickable { step -= 1 }.padding(14.dp)
             )
         }
     }

@@ -1,0 +1,67 @@
+# Screenshot capture flow. Walks the high-value v1.3.1 surfaces
+# and takes screenshots into /maestro/screenshots/. Result is
+# fresh listing assets for Play + App Store, replacing the v1.0
+# screenshots that gate production submission.
+#
+# Output: 6 PNGs covering Plain home (with demo word), Advanced
+# home, Settings → Verification primitives, Safety Cards browser,
+# ChallengeSheet, and the demo-mode banner.
+appId: app.thc.safewords
+---
+- runFlow: _setup-plain-bypass.yaml
+
+# 1. Onboarding welcome — for "first-launch" listing visual
+- assertVisible:
+    id: 'onboarding.welcome-cta'
+- takeScreenshot: ../screenshots/01-onboarding
+
+# 2. Demo mode → Plain home with the TIGER word + banner visible
+- tapOn:
+    id: 'onboarding.welcome-cta'
+- tapOn:
+    id: 'onboarding.demo-cta'
+
+# Demo lands us in Advanced Home; capture that.
+- assertVisible:
+    id: 'home.word-display'
+- takeScreenshot: ../screenshots/02-home-advanced
+
+# 3. Settings → Verification primitives section
+- tapOn:
+    text: 'Settings'
+    optional: true
+- assertVisible:
+    id: 'settings.section-verification'
+    optional: true
+- takeScreenshot: ../screenshots/03-settings-verification
+
+# 4. Safety Cards browser
+- tapOn:
+    id: 'settings.action-safety-cards'
+    optional: true
+- assertVisible:
+    id: 'safety-cards.row.protocol'
+    optional: true
+- takeScreenshot: ../screenshots/04-safety-cards
+
+- back
+
+# 5. ChallengeSheet (demo group has C/A enabled)
+- tapOn:
+    id: 'settings.action-run-challenge'
+    optional: true
+- assertVisible:
+    id: 'challenge.ask-phrase'
+    optional: true
+- takeScreenshot: ../screenshots/05-challenge
+
+- back
+
+# 6. Plain home with demo banner — flip plainMode toggle, return to Home
+- tapOn:
+    id: 'settings.toggle-plain-mode'
+    optional: true
+- assertVisible:
+    id: 'plain-home.demo-banner'
+    optional: true
+- takeScreenshot: ../screenshots/06-plain-demo

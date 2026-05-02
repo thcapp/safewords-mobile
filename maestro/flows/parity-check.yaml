@@ -1,0 +1,30 @@
+# Cross-platform parity check: enter demo mode, capture the
+# rotating word visible to the user, dump it to stdout for the
+# CI harness to compare across iOS and Android runs.
+#
+# Validates: HMAC-derivation + word-derivation + wordlist parity
+# end-to-end through the UI (the unit tests already do byte-level
+# parity; this is the integration tripwire).
+#
+# CI usage: run on Android, run on iOS, diff the captured words.
+# If they differ for the same wall-clock minute on the same demo
+# seed, parity has regressed.
+appId: app.thc.safewords
+---
+- runFlow: _setup-plain-bypass.yaml
+
+- tapOn:
+    id: 'onboarding.welcome-cta'
+- tapOn:
+    id: 'onboarding.demo-cta'
+
+- assertVisible:
+    id: 'home.word-display'
+
+# Capture the displayed word. Maestro's copyTextFrom puts the
+# matched element's text into ${maestro.copiedText}; evalScript
+# emits it to stdout where the CI harness can diff platforms.
+- copyTextFrom:
+    id: 'home.word-display'
+- evalScript: ${output.parityWord = maestro.copiedText}
+- evalScript: ${console.log('PARITY_WORD=' + maestro.copiedText)}

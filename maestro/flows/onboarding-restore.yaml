@@ -1,0 +1,45 @@
+# Restore path: paste a known 64-char hex seed (seedA from
+# /shared/test-vectors.json), end on Home with a word visible.
+#
+# Validates: nav into RecoveryPhraseScreen, hex-seed parser accepts
+# the canonical fixture, group is created from restored seed.
+#
+# We deliberately use the hex seed rather than the 24-word BIP39
+# phrase here — Maestro's text input + on-screen keyboards make
+# typing 24 words across two devices flaky. The hex path uses the
+# same code under the hood (RecoveryPhraseService.parseSeed).
+appId: app.thc.safewords
+---
+- runFlow: _setup-plain-bypass.yaml
+
+- tapOn:
+    id: 'onboarding.welcome-cta'
+- assertVisible:
+    id: 'onboarding.restore-cta'
+- tapOn:
+    id: 'onboarding.restore-cta'
+
+# RecoveryPhraseScreen is now visible. Field order:
+# group-name, member-name, recovery-phrase.input, then submit.
+- tapOn:
+    id: 'recovery-phrase.group-name'
+    optional: true   # Android route may auto-name; iOS requires it
+- inputText: 'Maestro Restored'
+- hideKeyboard
+- tapOn:
+    id: 'recovery-phrase.member-name'
+    optional: true
+- inputText: 'Maestro Tester'
+- hideKeyboard
+
+- tapOn:
+    id: 'recovery-phrase.input'
+- inputText: '0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20'
+- hideKeyboard
+
+- tapOn:
+    id: 'recovery-phrase.submit'
+
+# Restored group is active. Rotating word renders.
+- assertVisible:
+    id: 'home.word-display'

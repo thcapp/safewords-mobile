@@ -1,0 +1,28 @@
+# Reusable subflow: clear app state and traverse PlainOnboarding +
+# the Plain default home so we land on the real Advanced Onboarding
+# screen ready for the test path under Welcome / Start.
+#
+# Used by every Phase 1 flow that wants to exercise the real
+# onboarding surface (Create / Demo / Restore).
+appId: app.thc.safewords
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: 'plain-onboarding.cta-next'
+- tapOn:
+    id: 'plain-onboarding.cta-next'
+- assertVisible:
+    id: 'plain-onboarding.cta-done'
+- tapOn:
+    id: 'plain-onboarding.cta-done'
+# At this point we're on PlainHome with no group. The "Standard view"
+# pill (tagged plain-home.gear-button on Android, gear icon on iOS)
+# flips advancedView=true and routes through SafewordsNavigation,
+# which sees no groups and lands us on the real OnboardingScreen.
+- assertVisible:
+    id: 'plain-home.gear-button'
+- tapOn:
+    id: 'plain-home.gear-button'
+- assertVisible:
+    id: 'onboarding.welcome-cta'

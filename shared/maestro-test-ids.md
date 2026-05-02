@@ -90,6 +90,14 @@ For Compose, ensure `semantics { testTagsAsResourceId = true }` is set at the ro
 | `plain-help.emergency` | Emergency 911 card |
 | `plain-help.text-size` | "Change text size" card (iOS — opens iOS Settings) |
 
+### Plain Onboarding (sub-flow inside PlainRoot, gates first-launch)
+
+| ID | Purpose |
+|---|---|
+| `plain-onboarding.cta-next` | Primary CTA on intermediate panels (e.g. "Show me how") — advances step |
+| `plain-onboarding.cta-done` | Primary CTA on final panel (e.g. "Get started") — completes the sub-flow |
+| `plain-onboarding.back` | "Back" link visible from the second panel onward |
+
 ### Advanced — Home
 
 | ID | Purpose |
@@ -250,6 +258,42 @@ For Compose, ensure `semantics { testTagsAsResourceId = true }` is set at the ro
 Widgets aren't testable via Maestro (they're outside the app's accessibility tree). Skip.
 
 ---
+
+## Implementation status (2026-05-02)
+
+After Phase 1 tagging on both platforms (commits `366c037` iOS and `de0e720` Android), the following IDs from this registry are **not currently implementable** because the underlying UI element doesn't exist on that platform:
+
+| ID | iOS | Android | Note |
+|---|---|---|---|
+| `onboarding.seed-display.create-button` | tagged | **missing** | Android's create flow short-circuits to `createGroup(...)` on the form CTA; no separate seed-display panel between form and creation |
+| `onboarding.seed-display.warning` | tagged | **missing** | Same as above |
+| `groups.scan-button` | n/a | **missing** | `GroupsScreen` only has a single Add FAB; no QR-scan FAB. The `onScanQR` callback is plumbed through nav but no UI invokes it |
+| `qr-display.copy-link` | n/a | **missing** | Only SMS + back affordances; no copy-link button |
+| `qr-scanner.recovery-fallback` | n/a | **missing** | No "Use recovery code" link in `QRScannerScreen` |
+| `home.bell` | tagged | **n/a** | iOS-only header affordance |
+| `recovery-backup.unlock` | tagged | **n/a** | Android auto-prompts on entry; no manual unlock button |
+| `plain-home.challenge-cta` | tagged | **n/a** | Android's `PlainHome` has a "Someone is calling me" button that routes to `PlainVerify`, not a challenge sheet. iOS-only by current UI |
+| `challenge.row-prev` / `challenge.row-next` / `challenge.row-label` / `challenge.show-table` / `challenge.full-table` | tagged | **n/a** | iOS has a stepper UX with full-table reveal; Android only has `challenge.reroll` |
+| `challenge.reroll` | n/a | tagged | Android-specific |
+| `safety-cards.print` / `safety-cards.share` / `safety-cards.preview` | tagged | **n/a** | iOS has explicit Print + Share buttons + a preview area; Android prints directly from each row |
+| `primitives-sheet.*` (4 IDs) | tagged | **n/a** | iOS-only sheet |
+| `override-reveal.*` (3 IDs) | n/a | tagged | Android-only screen |
+| `generator.*` (3 IDs) | n/a | tagged | Android-only screen |
+| `group-detail.*` (4 IDs) | n/a | tagged | Android-only screen (iOS combines into Settings/Groups) |
+
+### Resolved ambiguities
+
+- **`plain-home.word-display`**: covers either render mode (split words for adj-noun-number, or single block for numeric). Android wraps both branches in a tagged `Column`; iOS should do the same.
+- **`plain-home.gear-button`**: Android's element is the "Standard view" pill (tap to exit Plain). iOS uses an actual gear icon. Same logical role; selectors target ID, not visual.
+- **`drills.passed` / `drills.failed`**: Android Prompt asks the user to grade themselves ("Right word?" / "Wrong word?") — same logical pass/fail outcome, different framing copy. iOS may differ; flows that use these should accept either framing.
+- **`verify.empty-state`**: Android tags the explanatory `Text` only when `!needsVerify`. iOS may tag a wider container. Maestro `assertVisible: id:verify.empty-state` works on both.
+
+### Flow authoring rules
+
+When writing a Maestro flow:
+1. Check this status table before targeting an ID. "missing" or "n/a" means that step won't run on that platform.
+2. For platform-asymmetric flows, gate with `runFlow` + `when:` conditional or duplicate the file with `-ios.yaml` / `-android.yaml` suffixes.
+3. The ideal flow targets only IDs that are tagged on **both** platforms — pick those when the test concept allows.
 
 ## Adding new IDs
 

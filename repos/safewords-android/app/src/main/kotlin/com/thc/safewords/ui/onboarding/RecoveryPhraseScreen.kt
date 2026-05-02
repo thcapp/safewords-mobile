@@ -216,7 +216,6 @@ private fun LabeledField(
             .clip(RoundedCornerShape(14.dp))
             .background(Ink.bgElev)
             .border(0.5.dp, Ink.rule, RoundedCornerShape(14.dp))
-            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Text(
@@ -231,6 +230,7 @@ private fun LabeledField(
             singleLine = !monospace,
             textStyle = TextStyle(fontSize = if (monospace) 13.sp else 17.sp, color = Ink.fg, letterSpacing = if (monospace) 0.5.sp else 0.sp),
             cursorBrush = SolidColor(Ink.accent),
+            modifier = if (testTagId != null) Modifier.fillMaxWidth().testTag(testTagId) else Modifier.fillMaxWidth(),
             decorationBox = { inner ->
                 if (value.isEmpty()) Text(placeholder, color = Ink.fgFaint, style = TextStyle(fontSize = if (monospace) 13.sp else 17.sp))
                 inner()

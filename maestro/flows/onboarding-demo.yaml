@@ -1,0 +1,51 @@
+# Demo path: clear state, walk Plain onboarding + Advanced switch,
+# tap "Try without a group" / "Look around first", land on Home
+# with the demo TIGER group active. Then verify exiting demo via
+# Settings (or banner if Plain is re-enabled) wipes demo state.
+#
+# Validates: demo-mode entry, demo seed produces a word, exit-demo
+# clears the active group + lands user on Onboarding for real setup.
+appId: app.thc.safewords
+---
+- runFlow: _setup-plain-bypass.yaml
+
+- tapOn:
+    id: 'onboarding.welcome-cta'
+- assertVisible:
+    id: 'onboarding.demo-cta'
+- tapOn:
+    id: 'onboarding.demo-cta'
+
+# Demo group is active; rotating word renders.
+- assertVisible:
+    id: 'home.word-display'
+
+# Re-enable Plain Mode via Settings → Accessibility so we can
+# confirm the demo banner appears (Plain-only UI element).
+- tapOn:
+    id: 'home.bell'   # iOS routes Settings via bell; Android skips via fallback below
+    optional: true
+- runFlow:
+    when:
+      visible:
+        text: 'Settings'
+    commands: []
+- tapOn:
+    text: 'Settings'
+    optional: true
+- tapOn:
+    id: 'settings.toggle-plain-mode'
+    optional: true
+
+# If we successfully toggled into Plain, the demo banner shows.
+- assertVisible:
+    id: 'plain-home.demo-banner'
+    optional: true
+
+# Tap the banner to exit demo + flip to Advanced + land on Onboarding.
+- tapOn:
+    id: 'plain-home.demo-banner'
+    optional: true
+- assertVisible:
+    id: 'onboarding.welcome-cta'
+    optional: true

@@ -1,0 +1,42 @@
+# Happy path: clear state, walk Plain onboarding + Advanced switch,
+# create a real group with name + creator, end on Advanced Home with
+# a rotating word visible.
+#
+# Validates: nav graph from fresh install through group creation,
+# writes a real seed to keystore, returns to Home.
+appId: app.thc.safewords
+---
+- runFlow: _setup-plain-bypass.yaml
+
+- tapOn:
+    id: 'onboarding.welcome-cta'
+- assertVisible:
+    id: 'onboarding.create-cta'
+- tapOn:
+    id: 'onboarding.create-cta'
+
+- assertVisible:
+    id: 'onboarding.create-form.group-name'
+- tapOn:
+    id: 'onboarding.create-form.group-name'
+- inputText: 'Maestro Test Family'
+- hideKeyboard
+
+- tapOn:
+    id: 'onboarding.create-form.creator-name'
+- inputText: 'Maestro Tester'
+- hideKeyboard
+
+- tapOn:
+    id: 'onboarding.create-form.submit'
+
+# We've created a real group; SafewordsNavigation routes us to Home
+# (Advanced view since we toggled there in the bypass subflow). The
+# rotating word renders ~1s after Home mounts when the periodic
+# coroutine ticks; wait for it explicitly.
+- extendedWaitUntil:
+    visible:
+      id: 'home.word-display'
+    timeout: 5000
+- assertVisible:
+    id: 'home.countdown-text'
