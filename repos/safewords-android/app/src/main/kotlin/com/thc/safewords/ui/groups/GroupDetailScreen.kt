@@ -50,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -126,7 +127,9 @@ fun GroupDetailScreen(
                         value = editedName,
                         onValueChange = { editedName = it },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("group-detail.name-edit"),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Teal,
                             unfocusedBorderColor = SurfaceVariant,
@@ -138,7 +141,8 @@ fun GroupDetailScreen(
                 } else {
                     Text(
                         text = group.name,
-                        color = TextPrimary
+                        color = TextPrimary,
+                        modifier = Modifier.testTag("group-detail.name-edit"),
                     )
                 }
             },
@@ -232,7 +236,9 @@ fun GroupDetailScreen(
                         Box {
                             OutlinedButton(
                                 onClick = { showIntervalMenu = true },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("group-detail.interval-picker"),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = TextPrimary
                                 )
@@ -278,7 +284,10 @@ fun GroupDetailScreen(
                                 style = MaterialTheme.typography.titleSmall,
                                 color = TextMuted
                             )
-                            TextButton(onClick = onInvite) {
+                            TextButton(
+                                onClick = onInvite,
+                                modifier = Modifier.testTag("group-detail.invite-cta"),
+                            ) {
                                 Icon(
                                     Icons.Default.PersonAdd,
                                     contentDescription = null,
@@ -304,7 +313,9 @@ fun GroupDetailScreen(
             item {
                 Button(
                     onClick = { showDeleteDialog = true },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("group-detail.danger-leave"),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Error.copy(alpha = 0.15f),
                         contentColor = Error

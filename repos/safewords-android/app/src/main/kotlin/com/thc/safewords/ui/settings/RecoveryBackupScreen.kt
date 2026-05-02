@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -99,6 +100,7 @@ fun RecoveryBackupScreen(onBack: () -> Unit) {
                         .clip(CircleShape)
                         .background(Ink.bgElev)
                         .border(0.5.dp, Ink.rule, CircleShape)
+                        .testTag("recovery-backup.back")
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.Center
                 ) {
@@ -185,6 +187,7 @@ private fun PhraseGrid(phrase: String) {
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(Ink.bgInset)
+                            .testTag("recovery-backup.word.%02d".format(n))
                             .padding(horizontal = 10.dp, vertical = 8.dp)
                             .width(70.dp),
                         horizontalAlignment = Alignment.Start
@@ -236,6 +239,7 @@ private fun CopyButton(phrase: String, ctx: Context) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .border(0.5.dp, Ink.rule, RoundedCornerShape(16.dp))
+            .testTag("recovery-backup.copy")
             .clickable {
                 val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 cm.setPrimaryClip(ClipData.newPlainText("recovery phrase", phrase))

@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -141,6 +142,13 @@ fun OnboardingScreen(
                         .weight(1f)
                         .clip(CircleShape)
                         .background(if (ctaEnabled) Ink.accent else Ink.bgInset)
+                        .testTag(
+                            when (step) {
+                                0 -> "onboarding.welcome-cta"
+                                2 -> "onboarding.create-form.submit"
+                                else -> "onboarding.cta"
+                            }
+                        )
                         .clickable(enabled = ctaEnabled) {
                             when (step) {
                                 0 -> step = 1
@@ -349,25 +357,29 @@ private fun PanelStart(onCreate: () -> Unit, onJoin: () -> Unit, onRecovery: () 
     OnboardOption(
         title = "Create a new group",
         sub = "We'll generate a private key for you. No backup needed yet — share via QR.",
-        icon = Icons.Outlined.Add, primary = true, onClick = onCreate
+        icon = Icons.Outlined.Add, primary = true, onClick = onCreate,
+        testTagId = "onboarding.create-cta",
     )
     Spacer(Modifier.height(12.dp))
     OnboardOption(
         title = "Join with a QR code",
         sub = "Scan a QR shared by a group member.",
-        icon = Icons.Outlined.QrCode, onClick = onJoin
+        icon = Icons.Outlined.QrCode, onClick = onJoin,
+        testTagId = "onboarding.join-qr-cta",
     )
     Spacer(Modifier.height(12.dp))
     OnboardOption(
         title = "Restore from a backup",
         sub = "Paste your seed if you saved one earlier.",
-        icon = Icons.Outlined.Refresh, onClick = onRecovery
+        icon = Icons.Outlined.Refresh, onClick = onRecovery,
+        testTagId = "onboarding.restore-cta",
     )
     Spacer(Modifier.height(12.dp))
     OnboardOption(
         title = "Try without a group",
         sub = "Look around the app first. Nothing saved.",
-        icon = Icons.Outlined.PlayArrow, onClick = onDemo
+        icon = Icons.Outlined.PlayArrow, onClick = onDemo,
+        testTagId = "onboarding.demo-cta",
     )
 
     Spacer(Modifier.height(24.dp))
@@ -386,6 +398,7 @@ private fun OnboardOption(
     sub: String,
     icon: ImageVector,
     primary: Boolean = false,
+    testTagId: String? = null,
     onClick: () -> Unit
 ) {
     val bg = if (primary) Ink.accent else Ink.bgElev
@@ -396,6 +409,7 @@ private fun OnboardOption(
             .clip(RoundedCornerShape(20.dp))
             .background(bg)
             .border(0.5.dp, if (primary) Color.Transparent else Ink.rule, RoundedCornerShape(20.dp))
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .clickable(onClick = onClick)
             .padding(18.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -441,9 +455,15 @@ private fun PanelCreateForm(
     )
 
     Spacer(Modifier.height(24.dp))
-    LabeledField("Group name", groupName, onGroupNameChange, placeholder = "Johnson Family")
+    LabeledField(
+        "Group name", groupName, onGroupNameChange, placeholder = "Johnson Family",
+        testTagId = "onboarding.create-form.group-name",
+    )
     Spacer(Modifier.height(14.dp))
-    LabeledField("Your name", creatorName, onCreatorNameChange, placeholder = "Alex")
+    LabeledField(
+        "Your name", creatorName, onCreatorNameChange, placeholder = "Alex",
+        testTagId = "onboarding.create-form.creator-name",
+    )
 }
 
 @Composable
@@ -451,7 +471,8 @@ private fun LabeledField(
     label: String,
     value: String,
     onChange: (String) -> Unit,
-    placeholder: String
+    placeholder: String,
+    testTagId: String? = null,
 ) {
     Column(
         modifier = Modifier
@@ -459,6 +480,7 @@ private fun LabeledField(
             .clip(RoundedCornerShape(14.dp))
             .background(Ink.bgElev)
             .border(0.5.dp, Ink.rule, RoundedCornerShape(14.dp))
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Text(

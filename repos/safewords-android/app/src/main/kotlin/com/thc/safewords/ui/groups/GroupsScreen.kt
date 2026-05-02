@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -84,6 +85,7 @@ fun GroupsScreen(
                         .clip(CircleShape)
                         .background(Ink.bgElev)
                         .border(0.5.dp, Ink.rule, CircleShape)
+                        .testTag("groups.add-button")
                         .clickable { onAddMember() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -151,6 +153,7 @@ private fun GroupCard(group: Group, active: Boolean, idx: Int, onClick: () -> Un
             .clip(RoundedCornerShape(20.dp))
             .background(Ink.bgElev)
             .border(0.5.dp, if (active) Ink.accent else Ink.rule, RoundedCornerShape(20.dp))
+            .testTag("groups.card.${group.id}")
             .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically

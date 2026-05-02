@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -92,7 +93,8 @@ fun VerifyScreen(onRunChallenge: (groupId: String) -> Unit = {}) {
                         "Verify isn't needed for ${group?.name ?: "this group"} right now — both phones show the same word. Add challenge / answer or a static override in Settings → Verification if you'd like a tap-to-confirm flow."
                     },
                     color = Ink.fgMuted,
-                    style = TextStyle(fontSize = 14.sp, lineHeight = 20.sp)
+                    style = TextStyle(fontSize = 14.sp, lineHeight = 20.sp),
+                    modifier = if (!needsVerify) Modifier.testTag("verify.empty-state") else Modifier,
                 )
             }
 
@@ -133,6 +135,7 @@ private fun ChallengeAnswerPanel(onOpen: () -> Unit) {
             .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
             .background(Ink.bgElev)
             .border(0.5.dp, Ink.rule, androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+            .testTag("verify.challenge-cta")
             .clickable(onClick = onOpen)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -180,6 +183,7 @@ private fun ReadyPanel(
             onValueChange = onTypedChange,
             textStyle = TextStyle(fontSize = 22.sp, color = Ink.fg, letterSpacing = 0.3.sp),
             cursorBrush = androidx.compose.ui.graphics.SolidColor(Ink.accent),
+            modifier = Modifier.testTag("verify.text-input"),
             decorationBox = { inner ->
                 if (typed.isEmpty()) {
                     Text(
@@ -200,6 +204,7 @@ private fun ReadyPanel(
                     .weight(1f)
                     .clip(CircleShape)
                     .background(if (typed.isEmpty()) Ink.bgInset else Ink.accent)
+                    .testTag("verify.check-button")
                     .clickable(enabled = typed.isNotEmpty(), onClick = onCheck)
                     .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center
@@ -215,6 +220,7 @@ private fun ReadyPanel(
                     .size(48.dp)
                     .clip(CircleShape)
                     .background(Ink.bgInset)
+                    .testTag("verify.listen-button")
                     .clickable { onListen() },
                 contentAlignment = Alignment.Center
             ) {
@@ -326,7 +332,10 @@ private fun ResultCard(match: Boolean, onDone: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp),
-        modifier = Modifier.fillMaxWidth().padding(top = 40.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 40.dp)
+            .testTag(if (match) "verify.result-match" else "verify.result-mismatch")
     ) {
         Box(
             modifier = Modifier

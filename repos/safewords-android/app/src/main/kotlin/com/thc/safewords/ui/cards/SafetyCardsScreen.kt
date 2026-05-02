@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -101,6 +102,7 @@ fun SafetyCardsScreen(onBack: () -> Unit) {
                 title = "Protocol card",
                 subtitle = "Ask. Listen. Hang up if it's wrong.",
                 sensitive = false,
+                testTagId = "safety-cards.row.protocol",
                 onPrint = {
                     val copy = SafetyCardCopy.card(context, "protocol")
                     val rules = SafetyCardCopy.strList(copy, "rules")
@@ -121,6 +123,7 @@ fun SafetyCardsScreen(onBack: () -> Unit) {
                     title = "Static override card",
                     subtitle = "$groupName · sensitive",
                     sensitive = true,
+                    testTagId = "safety-cards.row.static-override",
                     onPrint = {
                         gateThen(activity) {
                             val word = GroupRepository.getStaticOverride(group.id) ?: return@gateThen
@@ -145,6 +148,7 @@ fun SafetyCardsScreen(onBack: () -> Unit) {
                     title = "Challenge / answer · wallet",
                     subtitle = "First 24 rows · sensitive",
                     sensitive = true,
+                    testTagId = "safety-cards.row.challenge-wallet",
                     onPrint = {
                         gateThen(activity) {
                             val rows = GroupRepository.getChallengeAnswerTable(group.id, 24) ?: return@gateThen
@@ -166,6 +170,7 @@ fun SafetyCardsScreen(onBack: () -> Unit) {
                     title = "Challenge / answer · full",
                     subtitle = "100-row protocol table · sensitive",
                     sensitive = true,
+                    testTagId = "safety-cards.row.challenge-protocol",
                     onPrint = {
                         gateThen(activity) {
                             val rows = GroupRepository.getChallengeAnswerTable(group.id, primitives.challengeAnswer.rowCount)
@@ -190,6 +195,7 @@ fun SafetyCardsScreen(onBack: () -> Unit) {
                 title = "Recovery phrase card",
                 subtitle = "24-word BIP39 · sensitive",
                 sensitive = true,
+                testTagId = "safety-cards.row.recovery",
                 onPrint = {
                     gateThen(activity) {
                         val seed = GroupRepository.getGroupSeed(group.id) ?: return@gateThen
@@ -218,6 +224,7 @@ fun SafetyCardsScreen(onBack: () -> Unit) {
                 title = "Group invite card",
                 subtitle = "QR · seed-equivalent · sensitive",
                 sensitive = true,
+                testTagId = "safety-cards.row.invite",
                 onPrint = {
                     gateThen(activity) {
                         val qr = QRCodeService.generateQRBitmap(group, size = 1500) ?: return@gateThen
@@ -265,7 +272,7 @@ private fun gateThen(activity: FragmentActivity?, action: () -> Unit) {
 }
 
 @Composable
-private fun CardRow(title: String, subtitle: String, sensitive: Boolean, onPrint: () -> Unit) {
+private fun CardRow(title: String, subtitle: String, sensitive: Boolean, testTagId: String? = null, onPrint: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -273,6 +280,7 @@ private fun CardRow(title: String, subtitle: String, sensitive: Boolean, onPrint
             .clip(RoundedCornerShape(16.dp))
             .background(Ink.bgElev)
             .border(0.5.dp, Ink.rule, RoundedCornerShape(16.dp))
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .clickable(onClick = onPrint)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically

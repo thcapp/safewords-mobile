@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -107,10 +108,11 @@ private fun PlainTabBar(
     onChange: (PlainScreen) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    data class PlainTab(val key: PlainScreen, val label: String, val icon: ImageVector, val tag: String)
     val tabs = listOf(
-        Triple(PlainScreen.Home,   "Word",  Icons.Outlined.Shield),
-        Triple(PlainScreen.Verify, "Check", Icons.Outlined.Phone),
-        Triple(PlainScreen.Help,   "Help",  Icons.Outlined.Notifications)
+        PlainTab(PlainScreen.Home,   "Word",  Icons.Outlined.Shield,        "plain-home.tab-word"),
+        PlainTab(PlainScreen.Verify, "Check", Icons.Outlined.Phone,         "plain-home.tab-check"),
+        PlainTab(PlainScreen.Help,   "Help",  Icons.Outlined.Notifications, "plain-home.tab-help"),
     )
     Row(
         modifier = modifier
@@ -123,23 +125,24 @@ private fun PlainTabBar(
             .padding(6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        tabs.forEach { (key, label, icon) ->
-            val on = active == key
+        tabs.forEach { tab ->
+            val on = active == tab.key
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(20.dp))
                     .background(if (on) A11y.accent else Color.Transparent)
-                    .clickable { onChange(key) }
+                    .testTag(tab.tag)
+                    .clickable { onChange(tab.key) }
                     .heightIn(min = 60.dp)
                     .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(icon, null, tint = if (on) A11y.accentInk else A11y.fg, modifier = Modifier.size(22.dp))
+                    Icon(tab.icon, null, tint = if (on) A11y.accentInk else A11y.fg, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        label,
+                        tab.label,
                         color = if (on) A11y.accentInk else A11y.fg,
                         style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.1.sp)
                     )
@@ -154,7 +157,8 @@ private fun BigButton(
     label: String,
     onClick: () -> Unit,
     primary: Boolean = true,
-    icon: ImageVector? = null
+    icon: ImageVector? = null,
+    testTagId: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -167,6 +171,7 @@ private fun BigButton(
                 if (primary) Color.Transparent else A11y.rule,
                 RoundedCornerShape(18.dp)
             )
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .clickable(onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -238,7 +243,8 @@ private fun PlainHome(onVerify: () -> Unit, onExitPlain: () -> Unit, onSetupReal
                 Text(
                     g?.name ?: "Family",
                     color = A11y.fg,
-                    style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp)
+                    style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp),
+                    modifier = Modifier.testTag("plain-home.group-name"),
                 )
             }
             Box(
@@ -246,6 +252,7 @@ private fun PlainHome(onVerify: () -> Unit, onExitPlain: () -> Unit, onSetupReal
                     .clip(RoundedCornerShape(14.dp))
                     .background(A11y.bgElev)
                     .border(2.dp, A11y.rule, RoundedCornerShape(14.dp))
+                    .testTag("plain-home.gear-button")
                     .clickable(onClick = onExitPlain)
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
@@ -283,22 +290,27 @@ private fun PlainHome(onVerify: () -> Unit, onExitPlain: () -> Unit, onSetupReal
                 // Numeric format renders as a single block with looser tracking
                 // (digits are visually denser than words); word format keeps the
                 // line-per-word layout that emphasizes each part.
-                if (phrase.contains(' ')) {
-                    phrase.split(" ").forEach { w ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.testTag("plain-home.word-display"),
+                ) {
+                    if (phrase.contains(' ')) {
+                        phrase.split(" ").forEach { w ->
+                            Text(
+                                w,
+                                color = A11y.fg,
+                                style = TextStyle(fontSize = 48.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.5).sp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
                         Text(
-                            w,
+                            phrase,
                             color = A11y.fg,
-                            style = TextStyle(fontSize = 48.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.5).sp),
+                            style = TextStyle(fontSize = 56.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 6.sp),
                             textAlign = TextAlign.Center
                         )
                     }
-                } else {
-                    Text(
-                        phrase,
-                        color = A11y.fg,
-                        style = TextStyle(fontSize = 56.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 6.sp),
-                        textAlign = TextAlign.Center
-                    )
                 }
             }
             Spacer(Modifier.height(28.dp))
@@ -307,6 +319,7 @@ private fun PlainHome(onVerify: () -> Unit, onExitPlain: () -> Unit, onSetupReal
                 modifier = Modifier
                     .clip(CircleShape)
                     .background(A11y.bgInset)
+                    .testTag("plain-home.countdown")
                     .padding(horizontal = 22.dp, vertical = 16.dp)
             ) {
                 Icon(Icons.Outlined.Refresh, null, tint = A11y.accent, modifier = Modifier.size(22.dp))
@@ -353,7 +366,8 @@ private fun PlainVerify(onDone: () -> Unit) {
             title = "Safe to talk.",
             body = "They said the right word. This is really them.",
             primaryLabel = "All done",
-            onPrimary = { phase = "ask"; onDone() }
+            onPrimary = { phase = "ask"; onDone() },
+            resultTagId = "plain-verify.result-safe",
         )
         "nomatch" -> PlainResult(
             safe = false,
@@ -362,7 +376,8 @@ private fun PlainVerify(onDone: () -> Unit) {
             primaryLabel = "I hung up",
             onPrimary = { phase = "ask"; onDone() },
             secondaryLabel = "Call them back on a trusted number",
-            onSecondary = {}
+            onSecondary = {},
+            resultTagId = "plain-verify.result-hangup",
         )
         else -> PlainAsk(
             onMatch = { phase = "match" },
@@ -428,13 +443,15 @@ private fun PlainAsk(onMatch: () -> Unit, onMismatch: () -> Unit, onCancel: () -
         AnswerButton(
             label = "Yes, it matched",
             bg = A11y.ok, fg = Color(0xFF052E14),
-            icon = Icons.Outlined.Check, onClick = onMatch
+            icon = Icons.Outlined.Check, onClick = onMatch,
+            testTagId = "plain-verify.match-yes",
         )
         Spacer(Modifier.height(14.dp))
         AnswerButton(
             label = "No, wrong word",
             bg = A11y.danger, fg = Color(0xFF3A0A0A),
-            icon = Icons.Outlined.Close, onClick = onMismatch
+            icon = Icons.Outlined.Close, onClick = onMismatch,
+            testTagId = "plain-verify.match-no",
         )
 
         Text(
@@ -451,13 +468,14 @@ private fun PlainAsk(onMatch: () -> Unit, onMismatch: () -> Unit, onCancel: () -
 }
 
 @Composable
-private fun AnswerButton(label: String, bg: Color, fg: Color, icon: ImageVector, onClick: () -> Unit) {
+private fun AnswerButton(label: String, bg: Color, fg: Color, icon: ImageVector, onClick: () -> Unit, testTagId: String? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 80.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(bg)
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .clickable(onClick = onClick)
             .padding(22.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -481,7 +499,8 @@ private fun PlainResult(
     primaryLabel: String,
     onPrimary: () -> Unit,
     secondaryLabel: String? = null,
-    onSecondary: () -> Unit = {}
+    onSecondary: () -> Unit = {},
+    resultTagId: String? = null,
 ) {
     val tone = if (safe) A11y.ok else A11y.danger
     val iconColor = if (safe) Color(0xFF052E14) else Color(0xFF3A0A0A)
@@ -500,6 +519,7 @@ private fun PlainResult(
                 .clip(RoundedCornerShape(28.dp))
                 .background(if (safe) A11y.ok.copy(alpha = 0.15f) else A11y.danger.copy(alpha = 0.15f))
                 .border(2.dp, tone, RoundedCornerShape(28.dp))
+                .then(if (resultTagId != null) Modifier.testTag(resultTagId) else Modifier)
                 .padding(horizontal = 22.dp, vertical = 40.dp)
         ) {
             Box(
@@ -530,7 +550,7 @@ private fun PlainResult(
             )
         }
         Spacer(Modifier.height(16.dp))
-        BigButton(label = primaryLabel, onClick = onPrimary)
+        BigButton(label = primaryLabel, onClick = onPrimary, testTagId = "plain-verify.done")
         if (secondaryLabel != null) {
             Spacer(Modifier.height(10.dp))
             BigButton(label = secondaryLabel, onClick = onSecondary, primary = false, icon = Icons.Outlined.Phone)
@@ -544,6 +564,7 @@ private fun PlainHelp(onExitPlain: () -> Unit = {}) {
         val icon: ImageVector,
         val label: String,
         val sub: String,
+        val tagId: String? = null,
         val onClick: () -> Unit
     )
 
@@ -560,6 +581,7 @@ private fun PlainHelp(onExitPlain: () -> Unit = {}) {
         ),
         HelpItem(
             Icons.Outlined.TextFields, "Change text size", "Make everything bigger",
+            tagId = "plain-help.text-size",
             onClick = {
                 val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -568,6 +590,7 @@ private fun PlainHelp(onExitPlain: () -> Unit = {}) {
         ),
         HelpItem(
             Icons.Outlined.Settings, "Turn off high visibility", "Use the regular look",
+            tagId = "plain-help.exit",
             onClick = onExitPlain
         )
     )
@@ -601,6 +624,7 @@ private fun PlainHelp(onExitPlain: () -> Unit = {}) {
                     .clip(RoundedCornerShape(18.dp))
                     .background(A11y.bgElev)
                     .border(2.dp, A11y.rule, RoundedCornerShape(18.dp))
+                    .then(if (item.tagId != null) Modifier.testTag(item.tagId) else Modifier)
                     .clickable(onClick = item.onClick)
                     .padding(18.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -634,6 +658,7 @@ private fun PlainHelp(onExitPlain: () -> Unit = {}) {
                 .clip(RoundedCornerShape(18.dp))
                 .background(A11y.danger.copy(alpha = 0.12f))
                 .border(2.dp, A11y.danger, RoundedCornerShape(18.dp))
+                .testTag("plain-help.emergency")
                 .clickable {
                     val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:911"))
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -758,6 +783,7 @@ private fun DemoBanner(onSetupReal: () -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(A11y.accent)
+            .testTag("plain-home.demo-banner")
             .clickable(onClick = onSetupReal)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,

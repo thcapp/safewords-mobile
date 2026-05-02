@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -106,7 +107,10 @@ fun QRScannerScreen(
         TopAppBar(
             title = { Text("Scan QR Code", color = TextPrimary) },
             navigationIcon = {
-                IconButton(onClick = onBack) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.testTag("qr-scanner.cancel"),
+                ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
@@ -137,6 +141,7 @@ fun QRScannerScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(16.dp))
+                        .testTag("qr-scanner.preview")
                 )
 
                 // Overlay text
@@ -173,6 +178,7 @@ fun QRScannerScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                    modifier = Modifier.testTag("qr-scanner.permission-cta"),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Teal,
                         contentColor = Background

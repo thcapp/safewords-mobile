@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -96,7 +97,7 @@ fun SettingsScreen(
             }
 
             // ─── Rotation ───
-            SettingsSection("Rotation · ${active?.name ?: "No group"}") {
+            SettingsSection("Rotation · ${active?.name ?: "No group"}", headerTagId = "settings.section-rotation") {
                 IntervalPicker(
                     current = active?.interval ?: GroupRepository.getDefaultInterval(),
                     onSelect = { interval ->
@@ -115,10 +116,10 @@ fun SettingsScreen(
             }
 
             // ─── Verification primitives (v1.3) ───
-            SettingsSection("Verification · ${active?.name ?: "No group"}") {
+            SettingsSection("Verification · ${active?.name ?: "No group"}", headerTagId = "settings.section-verification") {
                 val primitives = active?.primitivesOrDefault()
                 val numeric = primitives?.rotatingWord?.wordFormat == com.thc.safewords.data.WordFormat.NUMERIC
-                ToggleRow("Show as 6-digit code", numeric) { on ->
+                ToggleRow("Show as 6-digit code", numeric, testTagId = "settings.toggle-numeric") { on ->
                     active?.let {
                         GroupRepository.setWordFormat(
                             it.id,
@@ -128,7 +129,7 @@ fun SettingsScreen(
                     }
                 }
                 Divider()
-                ToggleRow("Static override word", primitives?.staticOverride?.enabled == true) { on ->
+                ToggleRow("Static override word", primitives?.staticOverride?.enabled == true, testTagId = "settings.toggle-static-override") { on ->
                     active?.let { GroupRepository.setStaticOverrideEnabled(it.id, on) }
                 }
                 if (primitives?.staticOverride?.enabled == true && active != null) {
@@ -136,11 +137,12 @@ fun SettingsScreen(
                     ActionRow(
                         label = "Reveal override word",
                         value = "Show",
+                        testTagId = "settings.action-reveal-override",
                         onClick = { onRevealOverride(active.id) }
                     )
                 }
                 Divider()
-                ToggleRow("Challenge / answer table", primitives?.challengeAnswer?.enabled == true) { on ->
+                ToggleRow("Challenge / answer table", primitives?.challengeAnswer?.enabled == true, testTagId = "settings.toggle-challenge-answer") { on ->
                     active?.let { GroupRepository.setChallengeAnswerEnabled(it.id, on) }
                 }
                 if (primitives?.challengeAnswer?.enabled == true && active != null) {
@@ -148,6 +150,7 @@ fun SettingsScreen(
                     ActionRow(
                         label = "Run challenge",
                         value = "Open",
+                        testTagId = "settings.action-run-challenge",
                         onClick = { onRunChallenge(active.id) }
                     )
                 }
@@ -155,13 +158,14 @@ fun SettingsScreen(
                 ActionRow(
                     label = "Print safety cards",
                     value = "Open",
+                    testTagId = "settings.action-safety-cards",
                     onClick = onOpenSafetyCards
                 )
             }
 
             // ─── Accessibility ───
             SettingsSection("Accessibility") {
-                ToggleRow("High visibility mode", plainMode, onPlainModeChange)
+                ToggleRow("High visibility mode", plainMode, testTagId = "settings.toggle-plain-mode", onChange = onPlainModeChange)
             }
 
             // ─── Widget & lock screen ───
@@ -176,8 +180,8 @@ fun SettingsScreen(
             }
 
             // ─── Security ───
-            SettingsSection("Security") {
-                ToggleRow("Require biometrics to open", biometricRequired) {
+            SettingsSection("Security", headerTagId = "settings.section-security") {
+                ToggleRow("Require biometrics to open", biometricRequired, testTagId = "settings.toggle-biometrics") {
                     biometricRequired = it; GroupRepository.setBiometricRequired(it)
                 }
                 Divider()
@@ -192,6 +196,7 @@ fun SettingsScreen(
                 ActionRow(
                     label = "Rotate group seed",
                     enabled = active != null,
+                    testTagId = "settings.action-rotate-seed",
                     onClick = { showRotateConfirm = true }
                 )
                 Divider()
@@ -199,6 +204,7 @@ fun SettingsScreen(
                     label = "Back up seed phrase",
                     value = "24 words",
                     enabled = active != null,
+                    testTagId = "settings.action-recovery-backup",
                     onClick = onBackupSeedPhrase
                 )
             }
@@ -208,6 +214,7 @@ fun SettingsScreen(
                 ActionRow(
                     label = "Single use word generator",
                     value = "Open",
+                    testTagId = "settings.action-generator",
                     onClick = onOpenGenerator
                 )
             }
@@ -217,6 +224,7 @@ fun SettingsScreen(
                 ActionRow(
                     label = "Run a scam drill",
                     enabled = active != null,
+                    testTagId = "settings.action-drill",
                     onClick = onRunDrill
                 )
                 Divider()
@@ -228,10 +236,10 @@ fun SettingsScreen(
             }
 
             // ─── Danger zone ───
-            SettingsSection("Danger zone") {
-                DangerRow("Leave this group", enabled = active != null) { showLeaveConfirm = true }
+            SettingsSection("Danger zone", headerTagId = "settings.section-danger") {
+                DangerRow("Leave this group", enabled = active != null, testTagId = "settings.action-leave-group") { showLeaveConfirm = true }
                 Divider()
-                DangerRow("Reset device") { showResetConfirm = true }
+                DangerRow("Reset device", testTagId = "settings.action-reset-data") { showResetConfirm = true }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -315,9 +323,14 @@ fun SettingsScreen(
 // ─── Reusable rows ────────────────────────────────────────────────
 
 @Composable
-private fun SettingsSection(label: String, content: @Composable () -> Unit) {
+private fun SettingsSection(label: String, headerTagId: String? = null, content: @Composable () -> Unit) {
     Column(Modifier.padding(top = 22.dp)) {
-        SectionLabel(label, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+        SectionLabel(
+            label,
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .then(if (headerTagId != null) Modifier.testTag(headerTagId) else Modifier),
+        )
         Column(
             modifier = Modifier
                 .padding(horizontal = 16.dp)
@@ -340,11 +353,13 @@ private fun ActionRow(
     value: String? = null,
     accent: Boolean = false,
     enabled: Boolean = true,
+    testTagId: String? = null,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -373,9 +388,12 @@ private fun ActionRow(
 }
 
 @Composable
-private fun ToggleRow(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
+private fun ToggleRow(label: String, value: Boolean, testTagId: String? = null, onChange: (Boolean) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, color = Ink.fg, style = TextStyle(fontSize = 14.5.sp), modifier = Modifier.weight(1f))
@@ -394,10 +412,11 @@ private fun ToggleRow(label: String, value: Boolean, onChange: (Boolean) -> Unit
 }
 
 @Composable
-private fun DangerRow(label: String, enabled: Boolean = true, onClick: () -> Unit) {
+private fun DangerRow(label: String, enabled: Boolean = true, testTagId: String? = null, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {

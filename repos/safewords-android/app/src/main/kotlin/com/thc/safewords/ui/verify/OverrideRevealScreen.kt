@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -86,6 +87,7 @@ fun OverrideRevealScreen(groupId: String, onBack: () -> Unit) {
                         .clip(RoundedCornerShape(10.dp))
                         .background(Ink.bgElev)
                         .border(0.5.dp, Ink.rule, RoundedCornerShape(10.dp))
+                        .testTag("override-reveal.back")
                         .clickable(onClick = onBack)
                         .padding(8.dp),
                     contentAlignment = Alignment.Center
@@ -110,15 +112,21 @@ fun OverrideRevealScreen(groupId: String, onBack: () -> Unit) {
                         "Anyone with this word can act as you in this group.",
                         color = Ink.fgMuted,
                         textAlign = TextAlign.Center,
-                        style = TextStyle(fontSize = 13.sp, lineHeight = 18.sp)
+                        style = TextStyle(fontSize = 13.sp, lineHeight = 18.sp),
+                        modifier = Modifier.testTag("override-reveal.warning"),
                     )
                     Spacer(Modifier.height(40.dp))
-                    word!!.split(' ').forEach { w ->
-                        Text(
-                            w,
-                            color = Ink.fg,
-                            style = TextStyle(fontSize = 38.sp, lineHeight = 44.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp)
-                        )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.testTag("override-reveal.word"),
+                    ) {
+                        word!!.split(' ').forEach { w ->
+                            Text(
+                                w,
+                                color = Ink.fg,
+                                style = TextStyle(fontSize = 38.sp, lineHeight = 44.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp)
+                            )
+                        }
                     }
                     Spacer(Modifier.height(40.dp))
                     Text(

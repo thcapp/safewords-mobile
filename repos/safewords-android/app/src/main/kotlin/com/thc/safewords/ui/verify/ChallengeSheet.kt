@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -119,7 +120,8 @@ private fun AskingPanel(
     Text(
         row?.ask ?: "—",
         color = Ink.fg,
-        style = TextStyle(fontSize = 36.sp, lineHeight = 42.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp)
+        style = TextStyle(fontSize = 36.sp, lineHeight = 42.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp),
+        modifier = Modifier.testTag("challenge.ask-phrase"),
     )
 
     Spacer(Modifier.height(36.dp))
@@ -132,7 +134,8 @@ private fun AskingPanel(
     Text(
         row?.expect ?: "—",
         color = Ink.fg,
-        style = TextStyle(fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.4).sp)
+        style = TextStyle(fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.4).sp),
+        modifier = Modifier.testTag("challenge.expect-phrase"),
     )
 
     Spacer(Modifier.height(40.dp))
@@ -141,6 +144,7 @@ private fun AskingPanel(
         icon = Icons.Outlined.Check,
         accent = true,
         onClick = onMatch,
+        testTagId = "challenge.match-yes",
     )
     Spacer(Modifier.height(12.dp))
     BigButton(
@@ -148,6 +152,7 @@ private fun AskingPanel(
         icon = Icons.Outlined.Close,
         accent = false,
         onClick = onMismatch,
+        testTagId = "challenge.match-no",
     )
     Spacer(Modifier.height(20.dp))
     Text(
@@ -156,6 +161,7 @@ private fun AskingPanel(
         textAlign = TextAlign.Center,
         modifier = Modifier
             .fillMaxWidth()
+            .testTag("challenge.reroll")
             .clickable(onClick = onAnotherRow)
             .padding(8.dp),
         style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -194,12 +200,18 @@ private fun Result(match: Boolean, onClose: () -> Unit) {
             style = TextStyle(fontSize = 15.sp, lineHeight = 22.sp)
         )
         Spacer(Modifier.height(36.dp))
-        BigButton(label = "Done", icon = null, accent = true, onClick = onClose)
+        BigButton(label = "Done", icon = null, accent = true, onClick = onClose, testTagId = "challenge.done")
     }
 }
 
 @Composable
-private fun BigButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, accent: Boolean, onClick: () -> Unit) {
+private fun BigButton(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector?,
+    accent: Boolean,
+    onClick: () -> Unit,
+    testTagId: String? = null,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -207,6 +219,7 @@ private fun BigButton(label: String, icon: androidx.compose.ui.graphics.vector.I
             .clip(RoundedCornerShape(20.dp))
             .background(if (accent) Ink.fg else Ink.bgElev)
             .border(if (accent) 0.dp else 1.dp, Ink.rule, RoundedCornerShape(20.dp))
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .clickable(onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically

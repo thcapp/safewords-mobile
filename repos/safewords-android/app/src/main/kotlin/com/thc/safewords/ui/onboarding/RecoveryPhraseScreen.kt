@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -110,18 +111,25 @@ fun RecoveryPhraseScreen(
                 phrase,
                 { phrase = it; error = null },
                 placeholder = "abandon abandon … art   OR   0102…1f20",
-                monospace = true
+                monospace = true,
+                testTagId = "recovery-phrase.input",
             )
             Spacer(Modifier.height(14.dp))
-            LabeledField("Group name", groupName, { groupName = it }, placeholder = "Johnson Family")
+            LabeledField(
+                "Group name", groupName, { groupName = it }, placeholder = "Johnson Family",
+                testTagId = "recovery-phrase.group-name",
+            )
             Spacer(Modifier.height(14.dp))
-            LabeledField("Your name", memberName, { memberName = it }, placeholder = "Alex")
+            LabeledField(
+                "Your name", memberName, { memberName = it }, placeholder = "Alex",
+                testTagId = "recovery-phrase.member-name",
+            )
 
             Spacer(Modifier.height(20.dp))
             if (error != null) {
-                ErrorBanner(error!!)
+                ErrorBanner(error!!, testTagId = "recovery-phrase.error")
             } else if (parseError != null && phrase.isNotBlank()) {
-                ErrorBanner(parseError)
+                ErrorBanner(parseError, testTagId = "recovery-phrase.error")
             }
 
             Spacer(Modifier.height(20.dp))
@@ -130,6 +138,7 @@ fun RecoveryPhraseScreen(
                     .fillMaxWidth()
                     .clip(CircleShape)
                     .background(if (canSubmit) Ink.accent else Ink.bgInset)
+                    .testTag("recovery-phrase.submit")
                     .clickable(enabled = canSubmit) {
                         val hex = parsedHex ?: return@clickable
                         val joined = GroupRepository.joinGroup(
@@ -198,7 +207,8 @@ private fun LabeledField(
     value: String,
     onChange: (String) -> Unit,
     placeholder: String,
-    monospace: Boolean = false
+    monospace: Boolean = false,
+    testTagId: String? = null,
 ) {
     Column(
         modifier = Modifier
@@ -206,6 +216,7 @@ private fun LabeledField(
             .clip(RoundedCornerShape(14.dp))
             .background(Ink.bgElev)
             .border(0.5.dp, Ink.rule, RoundedCornerShape(14.dp))
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Text(
@@ -229,12 +240,13 @@ private fun LabeledField(
 }
 
 @Composable
-private fun ErrorBanner(message: String) {
+private fun ErrorBanner(message: String, testTagId: String? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(Ink.tickFill)
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .padding(14.dp),
         verticalAlignment = Alignment.Top
     ) {

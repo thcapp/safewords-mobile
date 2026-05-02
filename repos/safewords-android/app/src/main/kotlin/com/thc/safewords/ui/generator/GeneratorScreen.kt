@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -63,6 +64,7 @@ fun GeneratorScreen(onBack: () -> Unit) {
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(20.dp))
+                        .testTag("generator.back")
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.Center
                 ) {
@@ -118,7 +120,8 @@ fun GeneratorScreen(onBack: () -> Unit) {
                     phrase,
                     color = Ink.fg,
                     style = TextStyle(fontSize = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp, lineHeight = 44.sp),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.testTag("generator.word-display"),
                 )
                 Spacer(Modifier.height(28.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -127,6 +130,7 @@ fun GeneratorScreen(onBack: () -> Unit) {
                         modifier = Modifier
                             .clip(RoundedCornerShape(22.dp))
                             .background(Ink.accent)
+                            .testTag("generator.regenerate")
                             .clickable { phrase = WordGenerator.phrase(style) }
                             .padding(horizontal = 18.dp, vertical = 12.dp)
                     ) {

@@ -29,10 +29,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -102,6 +105,7 @@ private val tabs = listOf(
     TabItem(Screen.Settings, "Settings", Icons.Outlined.Settings),
 )
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SafewordsNavigation() {
     // v1.3: default home is Plain Mode for everyone. Advanced view is the
@@ -111,24 +115,47 @@ fun SafewordsNavigation() {
     var plainMode by remember { mutableStateOf(GroupRepository.isPlainMode()) }
     val groups by GroupRepository.groups.collectAsState()
 
+    // testTagsAsResourceId = true at the nav root makes Compose `Modifier.testTag(...)`
+    // values appear as Android resource IDs that Maestro can target via `id:<tag>`.
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .semantics { testTagsAsResourceId = true }
+    ) {
+        SafewordsNavigationContent(
+            advancedView = advancedView,
+            plainMode = plainMode,
+            groupsEmpty = groups.isEmpty(),
+            onPlainModeChange = { v ->
+                plainMode = v
+                GroupRepository.setPlainMode(v)
+            },
+            onAdvancedViewChange = { v ->
+                advancedView = v
+                GroupRepository.setAdvancedView(v)
+            },
+        )
+    }
+}
+
+@Composable
+private fun SafewordsNavigationContent(
+    advancedView: Boolean,
+    plainMode: Boolean,
+    groupsEmpty: Boolean,
+    onPlainModeChange: (Boolean) -> Unit,
+    onAdvancedViewChange: (Boolean) -> Unit,
+) {
     if (plainMode) {
-        PlainRoot(onExitPlain = {
-            plainMode = false
-            GroupRepository.setPlainMode(false)
-        })
+        PlainRoot(onExitPlain = { onPlainModeChange(false) })
         return
     }
 
     if (!advancedView) {
         PlainRoot(
-            onExitPlain = {
-                advancedView = true
-                GroupRepository.setAdvancedView(true)
-            },
+            onExitPlain = { onAdvancedViewChange(true) },
             onSetupReal = {
                 GroupRepository.exitDemoMode()
-                advancedView = true
-                GroupRepository.setAdvancedView(true)
+                onAdvancedViewChange(true)
             },
         )
         return
@@ -139,7 +166,7 @@ fun SafewordsNavigation() {
     val route = backEntry?.destination?.route
 
     val showTabBar = tabs.any { it.screen.route == route }
-    val start = if (groups.isEmpty()) Screen.Onboarding.route else Screen.Home.route
+    val start = if (groupsEmpty) Screen.Onboarding.route else Screen.Home.route
 
     Scaffold(
         containerColor = Ink.bg,
@@ -210,10 +237,7 @@ fun SafewordsNavigation() {
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     plainMode = plainMode,
-                    onPlainModeChange = {
-                        plainMode = it
-                        GroupRepository.setPlainMode(it)
-                    },
+                    onPlainModeChange = onPlainModeChange,
                     onRunDrill = { navController.navigate(Screen.Drills.route) },
                     onDrillHistory = { navController.navigate(Screen.Drills.route) },
                     onOpenGenerator = { navController.navigate(Screen.Generator.route) },

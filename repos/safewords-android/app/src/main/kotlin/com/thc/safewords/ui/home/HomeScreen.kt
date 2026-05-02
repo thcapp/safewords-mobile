@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -97,6 +98,7 @@ fun HomeScreen(
                     .clip(CircleShape)
                     .background(Ink.bgElev)
                     .border(0.5.dp, Ink.rule, CircleShape)
+                    .testTag("home.group-pill")
                     .clickable { onNavigateToGroups() }
                     .padding(start = 7.dp, end = 12.dp)
                     .padding(vertical = 7.dp),
@@ -148,7 +150,11 @@ fun HomeScreen(
             verticalArrangement = Arrangement.Top
         ) {
             Spacer(Modifier.height(30.dp))
-            CountdownRing(progress = progress, size = 340.dp) {
+            CountdownRing(
+                progress = progress,
+                size = 340.dp,
+                modifier = Modifier.testTag("home.countdown-ring"),
+            ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -164,17 +170,22 @@ fun HomeScreen(
                     }
                     Spacer(Modifier.height(14.dp))
                     if (phrase.isNotEmpty()) {
-                        phrase.split(" ").forEach { w ->
-                            Text(
-                                w,
-                                color = Ink.fg,
-                                style = TextStyle(
-                                    fontSize = 46.sp,
-                                    fontWeight = FontWeight.Normal,
-                                    letterSpacing = (-1.5).sp
-                                ),
-                                textAlign = TextAlign.Center
-                            )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.testTag("home.word-display"),
+                        ) {
+                            phrase.split(" ").forEach { w ->
+                                Text(
+                                    w,
+                                    color = Ink.fg,
+                                    style = TextStyle(
+                                        fontSize = 46.sp,
+                                        fontWeight = FontWeight.Normal,
+                                        letterSpacing = (-1.5).sp
+                                    ),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
                     Spacer(Modifier.height(14.dp))
@@ -189,7 +200,8 @@ fun HomeScreen(
             Text(
                 formatCountdown(remaining),
                 color = Ink.fg,
-                style = TextStyle(fontSize = 28.sp, letterSpacing = 2.sp)
+                style = TextStyle(fontSize = 28.sp, letterSpacing = 2.sp),
+                modifier = Modifier.testTag("home.countdown-text"),
             )
             Spacer(Modifier.height(8.dp))
             val previewEnabled = remember { GroupRepository.isPreviewNextWord() }
@@ -239,6 +251,7 @@ private fun EmptyState(onNavigateToGroups: () -> Unit) {
             modifier = Modifier
                 .clip(CircleShape)
                 .background(Ink.accent)
+                .testTag("home.empty-create-cta")
                 .clickable { onNavigateToGroups() }
                 .padding(horizontal = 22.dp, vertical = 14.dp)
         ) {

@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -157,7 +158,7 @@ fun DrillsScreen(onBack: () -> Unit) {
                 ) {
                     history.take(10).forEachIndexed { i, session ->
                         if (i > 0) Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Ink.rule))
-                        HistoryRow(session)
+                        HistoryRow(session, index = i)
                     }
                 }
             }
@@ -211,6 +212,7 @@ private fun IdlePanel(
                 .fillMaxWidth()
                 .clip(CircleShape)
                 .background(if (enabled) Ink.accent else Ink.bgInset)
+                .testTag("drills.start")
                 .clickable(enabled = enabled, onClick = onStart)
                 .padding(vertical = 14.dp),
             contentAlignment = Alignment.Center
@@ -242,7 +244,8 @@ private fun PromptPanel(
         Text(
             prompt.scenario,
             color = Ink.fg,
-            style = TextStyle(fontSize = 17.sp, lineHeight = 24.sp)
+            style = TextStyle(fontSize = 17.sp, lineHeight = 24.sp),
+            modifier = Modifier.testTag("drills.scenario"),
         )
         Spacer(Modifier.height(20.dp))
         Text(
@@ -252,19 +255,20 @@ private fun PromptPanel(
         )
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            AnswerButton("Right word", true, onClick = { onAnswer(true) })
-            AnswerButton("Wrong word", false, onClick = { onAnswer(false) })
+            AnswerButton("Right word", true, onClick = { onAnswer(true) }, testTagId = "drills.passed")
+            AnswerButton("Wrong word", false, onClick = { onAnswer(false) }, testTagId = "drills.failed")
         }
     }
 }
 
 @Composable
-private fun AnswerButton(label: String, positive: Boolean, onClick: () -> Unit) {
+private fun AnswerButton(label: String, positive: Boolean, onClick: () -> Unit, testTagId: String? = null) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .background(if (positive) Ink.ok.copy(alpha = 0.18f) else Ink.tickFill)
             .border(1.dp, if (positive) Ink.ok else Ink.accent, RoundedCornerShape(12.dp))
+            .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
@@ -351,13 +355,16 @@ private fun ResultPanel(
 }
 
 @Composable
-private fun HistoryRow(session: DrillService.DrillSession) {
+private fun HistoryRow(session: DrillService.DrillSession, index: Int = 0) {
     val tone = if (session.passed) Ink.ok else Ink.accent
     val date = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
         .format(Date(session.timestamp * 1000L))
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("drills.history-row.$index")
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(

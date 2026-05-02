@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -76,6 +77,7 @@ fun QRDisplayScreen(groupId: String, onDismiss: () -> Unit) {
                         .clip(CircleShape)
                         .background(Ink.bgElev)
                         .border(0.5.dp, Ink.rule, CircleShape)
+                        .testTag("qr-display.done")
                         .clickable { onDismiss() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -110,9 +112,11 @@ fun QRDisplayScreen(groupId: String, onDismiss: () -> Unit) {
                         Image(
                             bitmap = bmp.asImageBitmap(),
                             contentDescription = "QR code",
-                            modifier = Modifier.size(240.dp)
+                            modifier = Modifier
+                                .size(240.dp)
+                                .testTag("qr-display.qr"),
                         )
-                    } ?: Box(modifier = Modifier.size(240.dp).background(Ink.bgInset))
+                    } ?: Box(modifier = Modifier.size(240.dp).testTag("qr-display.qr").background(Ink.bgInset))
                 }
 
                 Spacer(Modifier.height(20.dp))
@@ -161,6 +165,7 @@ fun QRDisplayScreen(groupId: String, onDismiss: () -> Unit) {
                     .clip(RoundedCornerShape(14.dp))
                     .background(Ink.bgElev)
                     .border(0.5.dp, Ink.rule, RoundedCornerShape(14.dp))
+                    .testTag("qr-display.sms-cta")
                     .clickable(enabled = group != null) {
                         group?.let { SmsInviteService.shareViaSms(ctx, it) }
                     }
