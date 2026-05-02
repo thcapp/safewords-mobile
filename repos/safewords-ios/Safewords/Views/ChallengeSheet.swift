@@ -56,6 +56,7 @@ struct ChallengeSheet: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .background(Capsule().fill(Ink.accent))
+                        .accessibilityIdentifier("challenge.match-yes")
 
                         Button("Does not match") {
                             dismiss()
@@ -65,6 +66,7 @@ struct ChallengeSheet: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .background(Capsule().stroke(Ink.rule, lineWidth: 0.5))
+                        .accessibilityIdentifier("challenge.match-no")
                     }
 
                     Button {
@@ -81,6 +83,7 @@ struct ChallengeSheet: View {
                         .background(RoundedRectangle(cornerRadius: 16).fill(Ink.bgElev))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("challenge.show-table")
 
                     if showTable {
                         tableRows
@@ -100,11 +103,13 @@ struct ChallengeSheet: View {
                     .background(Circle().fill(Ink.bgInset))
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("challenge.row-prev")
 
             VStack(spacing: 2) {
                 Text("Row \(rowIndex + 1) of \(rowCount)")
                     .font(Fonts.body(16, weight: .semibold))
                     .foregroundStyle(Ink.fg)
+                    .accessibilityIdentifier("challenge.row-label")
                 Text("Pick any row. Both sides derive the same table.")
                     .font(Fonts.body(11.5))
                     .foregroundStyle(Ink.fgMuted)
@@ -117,6 +122,7 @@ struct ChallengeSheet: View {
                     .background(Circle().fill(Ink.bgInset))
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("challenge.row-next")
         }
         .foregroundStyle(Ink.fg)
         .padding(14)
@@ -144,6 +150,7 @@ struct ChallengeSheet: View {
                 .font(Fonts.display(34))
                 .tracking(-0.9)
                 .foregroundStyle(label == "Ask" ? Ink.fg : Ink.accent)
+                .accessibilityIdentifier(label == "Ask" ? "challenge.ask-phrase" : "challenge.expect-phrase")
         }
     }
 
@@ -177,6 +184,7 @@ struct ChallengeSheet: View {
         }
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 18).fill(Ink.bgElev))
+        .accessibilityIdentifier("challenge.full-table")
     }
 
     @MainActor

@@ -50,6 +50,7 @@ struct QRDisplayView: View {
                     )
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("qr-display.done")
             VStack(alignment: .leading, spacing: 2) {
                 SectionLabel(text: "Invite · \(groupStore.selectedGroup?.name ?? "")")
                 Text("Share in person")
@@ -87,6 +88,7 @@ struct QRDisplayView: View {
                     .overlay(RoundedRectangle(cornerRadius: 28).stroke(Ink.rule, lineWidth: 0.5))
                     .shadow(color: .black.opacity(0.3), radius: 20, y: 20)
             )
+            .accessibilityIdentifier("qr-display.qr")
 
             VStack(spacing: 12) {
                 (Text("Have them open Safewords, tap ")
@@ -139,6 +141,7 @@ struct QRDisplayView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("qr-display.sms-cta")
     }
 
     private func inviteViaSMS() {

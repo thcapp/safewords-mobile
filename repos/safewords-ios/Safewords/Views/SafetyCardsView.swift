@@ -103,6 +103,7 @@ struct SafetyCardsView: View {
                     .padding(14)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier(kind.rowIdentifier)
                 if kind != kinds.last {
                     Rectangle().fill(Ink.rule).frame(height: 0.5).padding(.leading, 16)
                 }
@@ -120,6 +121,7 @@ struct SafetyCardsView: View {
                 .frame(maxWidth: .infinity)
                 .clipped()
                 .background(RoundedRectangle(cornerRadius: 18).fill(Color.white))
+                .accessibilityIdentifier("safety-cards.preview")
 
             HStack(spacing: 10) {
                 Button("Print") {
@@ -132,6 +134,7 @@ struct SafetyCardsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)
                 .background(Capsule().fill(Ink.accent))
+                .accessibilityIdentifier("safety-cards.print")
 
                 Button("Share") {
                     if let image = render(kind: kind, group: group, seed: seed) {
@@ -143,6 +146,7 @@ struct SafetyCardsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)
                 .background(Capsule().stroke(Ink.rule, lineWidth: 0.5))
+                .accessibilityIdentifier("safety-cards.share")
             }
         }
         .padding(.top, 6)
@@ -240,6 +244,23 @@ private enum SafetyCardKind: String, CaseIterable, Identifiable {
             return "doc.text"
         case .groupInvite:
             return "qrcode"
+        }
+    }
+
+    var rowIdentifier: String {
+        switch self {
+        case .protocol:
+            return "safety-cards.row.protocol"
+        case .staticOverride:
+            return "safety-cards.row.static-override"
+        case .challengeWallet:
+            return "safety-cards.row.challenge-wallet"
+        case .challengeProtocol:
+            return "safety-cards.row.challenge-protocol"
+        case .recoveryPhrase:
+            return "safety-cards.row.recovery"
+        case .groupInvite:
+            return "safety-cards.row.invite"
         }
     }
 

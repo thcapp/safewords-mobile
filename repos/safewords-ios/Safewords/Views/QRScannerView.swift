@@ -29,6 +29,7 @@ struct QRScannerView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { cancel() }
+                        .accessibilityIdentifier("qr-scanner.cancel")
                 }
             }
         }
@@ -75,6 +76,7 @@ struct QRScannerView: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 14)
             .background(Capsule().fill(Ink.accent))
+            .accessibilityIdentifier("qr-scanner.permission-cta")
             Spacer()
         }
         .padding(24)
@@ -107,6 +109,7 @@ struct QRScannerView: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 14)
                 .background(Capsule().fill(Ink.accent))
+                .accessibilityIdentifier("qr-scanner.recovery-fallback")
             Spacer()
         }
         .padding(24)
@@ -128,6 +131,7 @@ struct QRScannerView: View {
                 .id(scannerID)
                 .frame(width: 280, height: 280)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
+                .accessibilityIdentifier("qr-scanner.preview")
 
                 RoundedRectangle(cornerRadius: 12)
                     .strokeBorder(Ink.accent, lineWidth: 2)

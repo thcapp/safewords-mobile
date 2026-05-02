@@ -32,12 +32,12 @@ struct SettingsView: View {
 
                     let group = groupStore.selectedGroup
                     section(label: "View") {
-                        toggleRow("Use Plain home by default", binding: $plainMode)
+                        toggleRow("Use Plain home by default", binding: $plainMode, identifier: "settings.toggle-plain-mode")
                         divider
                         infoRow("Advanced view", value: plainMode ? "Off" : "On")
                     }
 
-                    section(label: "Rotation · \(group?.name ?? "No group")") {
+                    section(label: "Rotation · \(group?.name ?? "No group")", identifier: "settings.section-rotation") {
                         if let group {
                             intervalPicker(group: group)
                         } else {
@@ -53,13 +53,13 @@ struct SettingsView: View {
                         toggleRow("Hold to reveal word", binding: revealBinding)
                     }
 
-                    section(label: "Group") {
+                    section(label: "Group", identifier: "settings.section-verification") {
                         actionRow("Primitives", value: primitivesValue(for: group)) {
                             showPrimitivesSheet = true
                         }
                         .disabled(group == nil)
                         divider
-                        actionRow("Safety cards", value: group == nil ? "No group" : "Print") {
+                        actionRow("Safety cards", value: group == nil ? "No group" : "Print", identifier: "settings.action-safety-cards") {
                             screen = .safetyCards
                         }
                         .disabled(group == nil)
@@ -73,34 +73,34 @@ struct SettingsView: View {
                         toggleRow("Hide word until unlock", binding: $hideWordUntilUnlock)
                     }
 
-                    section(label: "Security") {
-                        toggleRow("Require \(BiometricService.biometryName()) to open", binding: biometricBinding)
+                    section(label: "Security", identifier: "settings.section-security") {
+                        toggleRow("Require \(BiometricService.biometryName()) to open", binding: biometricBinding, identifier: "settings.toggle-biometrics")
                         divider
-                        actionRow("Emergency override word", value: emergencyValue(for: group)) {
+                        actionRow("Emergency override word", value: emergencyValue(for: group), identifier: "settings.action-reveal-override") {
                             emergencyWord = group.flatMap { groupStore.emergencyOverrideWord(groupID: $0.id) } ?? ""
                             showEmergencySheet = true
                         }
                         .disabled(group == nil)
                         divider
-                        infoRow("Rotate group seed", value: "Later")
+                        infoRow("Rotate group seed", value: "Later", identifier: "settings.action-rotate-seed")
                         divider
-                        actionRow("Back up seed phrase", value: group == nil ? "No group" : "24 words") {
+                        actionRow("Back up seed phrase", value: group == nil ? "No group" : "24 words", identifier: "settings.action-recovery-backup") {
                             screen = .recoveryBackup
                         }
                         .disabled(group == nil)
                     }
 
                     section(label: "Practice") {
-                        actionRow("Run a scam drill", value: "Now") { screen = .drills }
+                        actionRow("Run a scam drill", value: "Now", identifier: "settings.action-drill") { screen = .drills }
                         divider
                         actionRow("Drill history", value: "\(DrillService.sessions().count) saved") { screen = .drills }
                     }
 
-                    section(label: "Danger zone") {
-                        dangerRow("Leave this group") { showLeaveConfirmation = true }
+                    section(label: "Danger zone", identifier: "settings.section-danger") {
+                        dangerRow("Leave this group", identifier: "settings.action-leave-group") { showLeaveConfirmation = true }
                             .disabled(group == nil)
                         divider
-                        dangerRow("Reset device") { showResetConfirmation = true }
+                        dangerRow("Reset device", identifier: "settings.action-reset-data") { showResetConfirmation = true }
                     }
 
                     VStack(spacing: 4) {
@@ -230,12 +230,20 @@ struct SettingsView: View {
         .presentationDetents([.medium])
     }
 
-    private func section<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
+    private func section<Content: View>(label: String, identifier: String? = nil, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionLabel(text: label)
-                .padding(.horizontal, 20)
-                .padding(.top, 22)
-                .padding(.bottom, 8)
+            if let identifier {
+                SectionLabel(text: label)
+                    .accessibilityIdentifier(identifier)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 22)
+                    .padding(.bottom, 8)
+            } else {
+                SectionLabel(text: label)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 22)
+                    .padding(.bottom, 8)
+            }
             VStack(spacing: 0) { content() }
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -286,15 +294,30 @@ struct SettingsView: View {
         }
     }
 
-    private func actionRow(_ label: String, value: String? = nil, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            rowContent(label, value: value, accent: false, chevron: true)
+    @ViewBuilder
+    private func actionRow(_ label: String, value: String? = nil, identifier: String? = nil, action: @escaping () -> Void) -> some View {
+        if let identifier {
+            Button(action: action) {
+                rowContent(label, value: value, accent: false, chevron: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(identifier)
+        } else {
+            Button(action: action) {
+                rowContent(label, value: value, accent: false, chevron: true)
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
     }
 
-    private func infoRow(_ label: String, value: String?) -> some View {
-        rowContent(label, value: value, accent: false, chevron: false)
+    @ViewBuilder
+    private func infoRow(_ label: String, value: String?, identifier: String? = nil) -> some View {
+        if let identifier {
+            rowContent(label, value: value, accent: false, chevron: false)
+                .accessibilityIdentifier(identifier)
+        } else {
+            rowContent(label, value: value, accent: false, chevron: false)
+        }
     }
 
     private func rowContent(_ label: String, value: String?, accent: Bool, chevron: Bool) -> some View {
@@ -319,29 +342,52 @@ struct SettingsView: View {
         .contentShape(Rectangle())
     }
 
-    private func toggleRow(_ label: String, binding: Binding<Bool>) -> some View {
+    private func toggleRow(_ label: String, binding: Binding<Bool>, identifier: String? = nil) -> some View {
         HStack {
             Text(label).font(Fonts.body(14.5)).foregroundStyle(Ink.fg)
             Spacer()
-            Toggle("", isOn: binding)
-                .labelsHidden()
-                .tint(Ink.accent)
+            if let identifier {
+                Toggle("", isOn: binding)
+                    .labelsHidden()
+                    .tint(Ink.accent)
+                    .accessibilityIdentifier(identifier)
+            } else {
+                Toggle("", isOn: binding)
+                    .labelsHidden()
+                    .tint(Ink.accent)
+            }
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
     }
 
-    private func dangerRow(_ label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack {
-                Text(label)
-                    .font(Fonts.body(14.5))
-                    .foregroundStyle(Ink.accent)
-                Spacer()
+    @ViewBuilder
+    private func dangerRow(_ label: String, identifier: String? = nil, action: @escaping () -> Void) -> some View {
+        if let identifier {
+            Button(action: action) {
+                HStack {
+                    Text(label)
+                        .font(Fonts.body(14.5))
+                        .foregroundStyle(Ink.accent)
+                    Spacer()
+                }
+                .padding(.horizontal, 16).padding(.vertical, 14)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 16).padding(.vertical, 14)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(identifier)
+        } else {
+            Button(action: action) {
+                HStack {
+                    Text(label)
+                        .font(Fonts.body(14.5))
+                        .foregroundStyle(Ink.accent)
+                    Spacer()
+                }
+                .padding(.horizontal, 16).padding(.vertical, 14)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
     }
 
     private func emergencyValue(for group: Group?) -> String {
@@ -411,6 +457,8 @@ private struct PrimitiveSettingsSheet: View {
                         primitiveToggle(
                             "Numeric word format",
                             subtitle: "Show a 6-digit code instead of words.",
+                            rowIdentifier: "settings.toggle-numeric",
+                            toggleIdentifier: "primitives-sheet.toggle-numeric",
                             isOn: Binding(
                                 get: { groupStore.selectedGroup?.primitives.rotatingWord.wordFormat == .numeric },
                                 set: { enabled in
@@ -422,6 +470,8 @@ private struct PrimitiveSettingsSheet: View {
                         primitiveToggle(
                             "Static override",
                             subtitle: "A fixed emergency phrase derived from the group seed.",
+                            rowIdentifier: "settings.toggle-static-override",
+                            toggleIdentifier: "primitives-sheet.toggle-static-override",
                             isOn: Binding(
                                 get: { groupStore.selectedGroup?.primitives.staticOverride.enabled == true },
                                 set: { groupStore.setStaticOverrideEnabled(groupID: group.id, enabled: $0) }
@@ -431,6 +481,8 @@ private struct PrimitiveSettingsSheet: View {
                         primitiveToggle(
                             "Challenge / answer",
                             subtitle: "Use a deterministic challenge table and match sheet.",
+                            rowIdentifier: "settings.toggle-challenge-answer",
+                            toggleIdentifier: "primitives-sheet.toggle-challenge-answer",
                             isOn: Binding(
                                 get: { groupStore.selectedGroup?.primitives.challengeAnswer.enabled == true },
                                 set: { groupStore.setChallengeAnswerEnabled(groupID: group.id, enabled: $0) }
@@ -460,6 +512,7 @@ private struct PrimitiveSettingsSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(Capsule().fill(Ink.accent))
+                    .accessibilityIdentifier("primitives-sheet.done")
             }
             .padding(22)
         }
@@ -469,7 +522,13 @@ private struct PrimitiveSettingsSheet: View {
         Rectangle().fill(Ink.rule).frame(height: 0.5).padding(.leading, 16)
     }
 
-    private func primitiveToggle(_ title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+    private func primitiveToggle(
+        _ title: String,
+        subtitle: String,
+        rowIdentifier: String,
+        toggleIdentifier: String,
+        isOn: Binding<Bool>
+    ) -> some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -484,8 +543,10 @@ private struct PrimitiveSettingsSheet: View {
             Toggle("", isOn: isOn)
                 .labelsHidden()
                 .tint(Ink.accent)
+                .accessibilityIdentifier(toggleIdentifier)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+        .accessibilityIdentifier(rowIdentifier)
     }
 }

@@ -54,6 +54,7 @@ struct HomeView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("home.group-pill")
 
                 Spacer()
 
@@ -68,6 +69,7 @@ struct HomeView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("home.bell")
             }
             .padding(.horizontal, 18)
             .padding(.top, 6)
@@ -92,6 +94,7 @@ struct HomeView: View {
                                     .foregroundStyle(Ink.fg)
                             }
                         }
+                        .accessibilityIdentifier("home.word-display")
                         .blur(radius: shouldBlur ? 14 : 0)
                         .animation(.easeInOut(duration: 0.18), value: held)
                         .gesture(holdGesture)
@@ -105,6 +108,7 @@ struct HomeView: View {
                     .padding(.horizontal, 24)
                 }
                 .frame(width: 340, height: 340)
+                .accessibilityIdentifier("home.countdown-ring")
                 .overlay(alignment: .bottom) {
                     if revealStyle == "holdReveal" && !held {
                         Text("Hold to reveal")
@@ -120,6 +124,7 @@ struct HomeView: View {
                         .tracking(2)
                         .foregroundStyle(Ink.fg)
                         .monospacedDigit()
+                        .accessibilityIdentifier("home.countdown-text")
 
                     let rem = Int(remaining)
                     let h = rem / 3600
@@ -163,6 +168,7 @@ struct HomeView: View {
                 .padding(.horizontal, 22)
                 .padding(.vertical, 14)
                 .background(Capsule().fill(Ink.accent))
+                .accessibilityIdentifier("home.empty-create-cta")
         }
     }
 

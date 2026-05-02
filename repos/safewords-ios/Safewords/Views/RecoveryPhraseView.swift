@@ -20,8 +20,8 @@ struct RecoveryPhraseView: View {
                         .padding(.top, 62)
 
                     VStack(alignment: .leading, spacing: 16) {
-                        field("Group name", text: $groupName, prompt: "Family")
-                        field("Your name", text: $memberName, prompt: "Alex")
+                        field("Group name", text: $groupName, prompt: "Family", identifier: "recovery-phrase.group-name")
+                        field("Your name", text: $memberName, prompt: "Alex", identifier: "recovery-phrase.member-name")
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Recovery phrase or seed")
@@ -35,6 +35,7 @@ struct RecoveryPhraseView: View {
                                 .padding(12)
                                 .background(RoundedRectangle(cornerRadius: 14).fill(Ink.bgInset))
                                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Ink.rule, lineWidth: 0.5))
+                                .accessibilityIdentifier("recovery-phrase.input")
                         }
 
                         Text("Paste a 24-word recovery phrase or a 64-character hex seed, with or without spaces. The group name and your name are local labels.")
@@ -49,6 +50,7 @@ struct RecoveryPhraseView: View {
                                 .lineSpacing(3)
                                 .padding(14)
                                 .background(RoundedRectangle(cornerRadius: 14).fill(Ink.tickFill))
+                                .accessibilityIdentifier("recovery-phrase.error")
                         }
 
                         Button(action: join) {
@@ -61,6 +63,7 @@ struct RecoveryPhraseView: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(joinDisabled)
+                        .accessibilityIdentifier("recovery-phrase.submit")
                     }
                     .padding(18)
                     .background(
@@ -107,7 +110,7 @@ struct RecoveryPhraseView: View {
             recoveryInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private func field(_ label: String, text: Binding<String>, prompt: String) -> some View {
+    private func field(_ label: String, text: Binding<String>, prompt: String, identifier: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)
                 .font(Fonts.body(12, weight: .medium))
@@ -116,6 +119,7 @@ struct RecoveryPhraseView: View {
                 .font(Fonts.body(17, weight: .medium))
                 .foregroundStyle(Ink.fg)
                 .tint(Ink.accent)
+                .accessibilityIdentifier(identifier)
             Rectangle().fill(Ink.rule).frame(height: 1)
         }
     }

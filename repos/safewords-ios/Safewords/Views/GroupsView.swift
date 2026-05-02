@@ -54,6 +54,7 @@ struct GroupsView: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .accessibilityIdentifier("groups.invite-cta")
                             .padding(.top, 12)
                         }
                     }
@@ -87,6 +88,7 @@ struct GroupsView: View {
                     )
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("groups.add-button")
         }
     }
 
@@ -152,6 +154,7 @@ struct GroupsView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("groups.card.\(group.id.uuidString.lowercased())")
     }
 
     private func memberRow(member: Member, isFirst: Bool) -> some View {

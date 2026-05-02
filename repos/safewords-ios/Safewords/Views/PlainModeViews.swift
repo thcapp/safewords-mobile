@@ -92,6 +92,7 @@ struct A11yTabBar: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier(tabIdentifier(for: tab.key))
             }
         }
         .padding(6)
@@ -103,6 +104,15 @@ struct A11yTabBar: View {
         )
         .padding(.horizontal, 10)
         .padding(.bottom, 34)
+    }
+
+    private func tabIdentifier(for screen: PlainScreen) -> String {
+        switch screen {
+        case .home: return "plain-home.tab-word"
+        case .verify: return "plain-home.tab-check"
+        case .help: return "plain-home.tab-help"
+        case .onboarding: return "plain-home.tab-word"
+        }
     }
 }
 
@@ -154,6 +164,7 @@ struct PlainHomeView: View {
                         .font(A11yFonts.body(22, weight: .bold))
                         .tracking(-0.3)
                         .foregroundStyle(A11Y.fg)
+                        .accessibilityIdentifier("plain-home.group-name")
                 }
                 Spacer()
                 Button(action: onSettings) {
@@ -164,6 +175,7 @@ struct PlainHomeView: View {
                         .background(Circle().fill(A11Y.bgElev).overlay(Circle().stroke(A11Y.rule, lineWidth: 2)))
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("plain-home.gear-button")
             }
             .padding(.horizontal, 8).padding(.bottom, 16)
 
@@ -185,6 +197,7 @@ struct PlainHomeView: View {
                             .foregroundStyle(A11Y.fg)
                     }
                 }
+                .accessibilityIdentifier("plain-home.word-display")
 
                 HStack(spacing: 10) {
                     Image(systemName: "arrow.triangle.2.circlepath")
@@ -196,6 +209,7 @@ struct PlainHomeView: View {
                 }
                 .padding(.horizontal, 22).padding(.vertical, 16)
                 .background(Capsule().fill(A11Y.bgInset))
+                .accessibilityIdentifier("plain-home.countdown")
 
                 Text("Ask: \"What is our word?\"\nDo not say it first.")
                     .font(A11yFonts.body(16))
@@ -216,6 +230,7 @@ struct PlainHomeView: View {
                 BigButton(label: "Challenge someone", iconSystemName: "questionmark.bubble.fill") {
                     showingChallenge = true
                 }
+                .accessibilityIdentifier("plain-home.challenge-cta")
                 .padding(.top, 16)
             }
 
@@ -349,6 +364,7 @@ struct PlainVerifyView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(label == "Yes, it matched" ? "plain-verify.match-yes" : "plain-verify.match-no")
     }
 
     private func resultPanel(
@@ -392,11 +408,13 @@ struct PlainVerifyView: View {
             )
 
             BigButton(label: primary.0, action: primary.1)
+                .accessibilityIdentifier("plain-verify.done")
             if let s = secondary {
                 BigButton(label: s.0, variant: .ghost, iconSystemName: "phone", action: s.1)
             }
         }
         .padding(.horizontal, 18).padding(.top, 62).padding(.bottom, 120)
+        .accessibilityIdentifier(safe ? "plain-verify.result-safe" : "plain-verify.result-hangup")
     }
 }
 
@@ -458,11 +476,13 @@ struct PlainHelpView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("plain-help.emergency")
                     .padding(.top, 22)
 
                     BigButton(label: "Open Advanced View", variant: .ghost, iconSystemName: "arrow.uturn.left") {
                         plainMode = false
                     }
+                    .accessibilityIdentifier("plain-help.exit")
                     .padding(.top, 18)
                 }
                 .padding(.horizontal, 18).padding(.top, 62).padding(.bottom, 120)
@@ -471,7 +491,17 @@ struct PlainHelpView: View {
         }
     }
 
+    @ViewBuilder
     private func itemCard(_ item: Item) -> some View {
+        if item.label == "Change text size" {
+            itemCardButton(item)
+                .accessibilityIdentifier("plain-help.text-size")
+        } else {
+            itemCardButton(item)
+        }
+    }
+
+    private func itemCardButton(_ item: Item) -> some View {
         Button { handle(item) } label: {
             HStack(spacing: 14) {
                 ZStack {

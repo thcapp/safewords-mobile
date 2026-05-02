@@ -37,6 +37,7 @@ struct ContentView: View {
                         showingPlainSettings = false
                         screen = .onboarding
                     }
+                    .accessibilityIdentifier("plain-home.demo-banner")
                     .padding(.horizontal, 14)
                     .padding(.top, 8)
                     .zIndex(10)

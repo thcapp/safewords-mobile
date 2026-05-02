@@ -91,6 +91,7 @@ struct OnboardingView: View {
             }
             .buttonStyle(.plain)
             .disabled(primaryDisabled)
+            .accessibilityIdentifier(primaryIdentifier)
         }
     }
 
@@ -99,6 +100,17 @@ struct OnboardingView: View {
         case .welcome: return "Get started"
         case .start: return "Create a new group"
         case .create: return pendingSeed == nil ? "Generate recovery phrase" : "Create group"
+        }
+    }
+
+    private var primaryIdentifier: String {
+        switch flow {
+        case .welcome:
+            return "onboarding.welcome-cta"
+        case .start:
+            return "onboarding.create-cta"
+        case .create:
+            return pendingSeed == nil ? "onboarding.create-form.submit" : "onboarding.seed-display.create-button"
         }
     }
 
@@ -227,22 +239,26 @@ struct OnboardingView: View {
                     title: "Create a new group",
                     sub: "Generate a private seed and back it up.",
                     icon: "plus",
-                    primary: true
+                    primary: true,
+                    identifier: "onboarding.create-cta"
                 ) { flow = .create }
                 onboardOption(
                     title: "Join with a QR code",
                     sub: "Scan a QR shared by a group member.",
-                    icon: "qrcode"
+                    icon: "qrcode",
+                    identifier: "onboarding.join-qr-cta"
                 ) { screen = .qrScanner }
                 onboardOption(
                     title: "Join with a recovery phrase",
                     sub: "Restore an existing seed from backup.",
-                    icon: "arrow.triangle.2.circlepath"
+                    icon: "arrow.triangle.2.circlepath",
+                    identifier: "onboarding.restore-cta"
                 ) { screen = .recoveryPhrase }
                 onboardOption(
                     title: "Look around first",
                     sub: "Use a clearly marked demo group. Set up your real group later.",
-                    icon: "eye"
+                    icon: "eye",
+                    identifier: "onboarding.demo-cta"
                 ) {
                     groupStore.enterDemoMode()
                     onboarded = true
@@ -281,8 +297,18 @@ struct OnboardingView: View {
                     .padding(.top, 10)
 
                 VStack(spacing: 16) {
-                    formField("Group name", text: $groupName, prompt: "Family")
-                    formField("Your name", text: $creatorName, prompt: "Alex")
+                    formField(
+                        "Group name",
+                        text: $groupName,
+                        prompt: "Family",
+                        identifier: "onboarding.create-form.group-name"
+                    )
+                    formField(
+                        "Your name",
+                        text: $creatorName,
+                        prompt: "Alex",
+                        identifier: "onboarding.create-form.creator-name"
+                    )
                 }
                 .padding(18)
                 .background(
@@ -316,7 +342,7 @@ struct OnboardingView: View {
         }
     }
 
-    private func formField(_ label: String, text: Binding<String>, prompt: String) -> some View {
+    private func formField(_ label: String, text: Binding<String>, prompt: String, identifier: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)
                 .font(Fonts.body(12, weight: .medium))
@@ -325,6 +351,7 @@ struct OnboardingView: View {
                 .font(Fonts.body(18, weight: .medium))
                 .foregroundStyle(Ink.fg)
                 .tint(Ink.accent)
+                .accessibilityIdentifier(identifier)
             Rectangle().fill(Ink.rule).frame(height: 1)
         }
     }
@@ -362,6 +389,7 @@ struct OnboardingView: View {
                     .font(Fonts.body(12.5))
                     .foregroundStyle(Ink.accent)
                     .lineSpacing(3)
+                    .accessibilityIdentifier("onboarding.seed-display.warning")
             }
             .padding(14)
             .background(RoundedRectangle(cornerRadius: 14).fill(Ink.tickFill))
@@ -379,6 +407,7 @@ struct OnboardingView: View {
         sub: String,
         icon: String,
         primary: Bool = false,
+        identifier: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -413,5 +442,6 @@ struct OnboardingView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
     }
 }

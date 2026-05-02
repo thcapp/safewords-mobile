@@ -27,7 +27,9 @@ struct VerifyView: View {
                         case .ready: readyPanel
                         case .listening: listeningPanel
                         case .match: ResultCard(match: true, onBack: reset)
+                            .accessibilityIdentifier("verify.result-match")
                         case .mismatch: ResultCard(match: false, onBack: reset)
+                            .accessibilityIdentifier("verify.result-mismatch")
                         }
                     }
                 }
@@ -81,6 +83,7 @@ struct VerifyView: View {
                     .background(RoundedRectangle(cornerRadius: 18).fill(Ink.accent))
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("verify.challenge-cta")
                 .padding(.bottom, 18)
             }
 
@@ -91,6 +94,7 @@ struct VerifyView: View {
                     .foregroundStyle(Ink.fg)
                     .tint(Ink.accent)
                     .padding(.top, -4)
+                    .accessibilityIdentifier("verify.text-input")
                 Rectangle().fill(Ink.rule).frame(height: 1).padding(.horizontal, -20)
                 HStack(spacing: 8) {
                     Button { check() } label: {
@@ -102,6 +106,7 @@ struct VerifyView: View {
                             .background(Capsule().fill(typed.isEmpty ? Ink.bgInset : Ink.accent))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("verify.check-button")
                     Button { phase = .listening } label: {
                         Image(systemName: "mic")
                             .font(.system(size: 17, weight: .medium))
@@ -110,6 +115,7 @@ struct VerifyView: View {
                             .background(Capsule().fill(Ink.bgInset))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("verify.listen-button")
                 }
             }
             .padding(20)
@@ -178,6 +184,7 @@ struct VerifyView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 46)
+        .accessibilityIdentifier("verify.empty-state")
     }
 
     private func tipRow(n: Int, title: String, sub: String) -> some View {

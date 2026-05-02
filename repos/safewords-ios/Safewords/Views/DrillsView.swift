@@ -80,6 +80,7 @@ struct DrillsView: View {
                     .background(Capsule().fill(Ink.accent))
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("drills.start")
         }
         .padding(18)
         .background(
@@ -100,6 +101,7 @@ struct DrillsView: View {
                 .font(Fonts.body(15))
                 .foregroundStyle(Ink.fgMuted)
                 .lineSpacing(4)
+                .accessibilityIdentifier("drills.scenario")
             Text("Ask them: \"What is our word?\" Do not read the word to them.")
                 .font(Fonts.body(16, weight: .semibold))
                 .foregroundStyle(Ink.accent)
@@ -138,6 +140,7 @@ struct DrillsView: View {
                 .background(Capsule().fill(success ? Ink.ok : Ink.bgInset))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(success ? "drills.passed" : "drills.failed")
     }
 
     private var history: some View {
@@ -166,6 +169,7 @@ struct DrillsView: View {
                             Spacer()
                         }
                         .padding(16)
+                        .accessibilityIdentifier("drills.history-row.\(index)")
                     }
                 }
                 .background(

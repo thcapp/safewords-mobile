@@ -58,6 +58,7 @@ struct RecoveryBackupView: View {
                     )
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("recovery-backup.back")
 
             VStack(alignment: .leading, spacing: 2) {
                 SectionLabel(text: "Back up seed phrase")
@@ -128,6 +129,7 @@ struct RecoveryBackupView: View {
             .background(Capsule().fill(Ink.accent))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("recovery-backup.unlock")
     }
 
     private func phraseCard(_ phrase: String) -> some View {
@@ -151,6 +153,7 @@ struct RecoveryBackupView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 8)
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Ink.bgInset))
+                .accessibilityIdentifier(String(format: "recovery-backup.word.%02d", index + 1))
             }
         }
         .padding(16)
@@ -178,6 +181,7 @@ struct RecoveryBackupView: View {
             .background(Capsule().stroke(Ink.rule, lineWidth: 0.5))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("recovery-backup.copy")
     }
 
     private func messageCard(_ message: String, icon: String, accent: Bool) -> some View {
