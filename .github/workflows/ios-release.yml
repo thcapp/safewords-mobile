@@ -167,10 +167,7 @@ jobs:
           # Pick the first available iPhone 15 simulator and boot it. The
           # fastlane :maestro_test lane re-boots if needed but pre-warming
           # cuts ~30s off the first flow run when the device is cold.
-          udid=$(xcrun simctl list devices available --json \
-            | python3 -c "import json,sys; data=json.load(sys.stdin); \
-print(next((d['udid'] for runtime,devs in data['devices'].items() \
-for d in devs if d['name']=='iPhone 15'), ''))")
+          udid=$(xcrun simctl list devices available --json | python3 -c "import json,sys; data=json.load(sys.stdin); print(next((d['udid'] for runtime,devs in data['devices'].items() for d in devs if d['name']=='iPhone 15'), ''))")
           if [[ -z "$udid" ]]; then
             echo "::warning ::No 'iPhone 15' simulator found; lane will surface the error"
             exit 0
