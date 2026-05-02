@@ -574,3 +574,51 @@ goes for `CFBundleIdentifier = $(PRODUCT_BUNDLE_IDENTIFIER)`,
 `CFBundleExecutable = $(EXECUTABLE_NAME)`, etc. If you ever convert
 `INFOPLIST_VALUES` config to a static plist, audit every value that was
 previously synthesized.
+
+---
+
+## Maestro on u5 — environment + flow-syntax gotchas
+
+Found while installing Maestro 2.5.1 + smoke-testing on `u5`.
+
+### `~/.maestro/bin` is not on the non-interactive ssh PATH
+
+Maestro's installer adds it to `~/.bashrc` and `~/.zshrc` only. SSH-driven CI/scripted runs hit "command not found" unless the PATH is exported explicitly:
+
+```bash
+ssh u5 'export PATH="$PATH:$HOME/.maestro/bin" && maestro test ...'
+```
+
+Same caveat applies to `adb` and `emulator` on u5 — they live under `$HOME/android-sdk/{platform-tools,emulator}` and require `ANDROID_HOME=$HOME/android-sdk` plus a PATH prepend. Bake both exports into any fastlane lane or CI step that calls these binaries over ssh.
+
+### Maestro 2.x does NOT honor inline regex flags
+
+`(?i)`, `(?m)`, and friends are silently dropped in Maestro 2.5.1's regex engine. Flows that worked in Maestro 1.x with `(?i)pattern` will fail to match in 2.x.
+
+Workarounds:
+- Use literal text where possible (Maestro's text matcher is already case-sensitive partial-match by default; just match what's actually on screen)
+- For genuinely case-insensitive needs, use a character class: `[Ss][Aa][Ff][Ee][Ww][Oo][Rr][Dd][Ss]`
+- Do NOT rely on inline flags; they don't error, they're just ignored
+
+### Pre-warm the emulator in CI
+
+Cold boot of the Pixel AVD on `u5` is 60-90 seconds before Maestro can connect. Each Maestro flow itself is fast (8s warm baseline + ~2-5s per step), so 90% of total CI time is emulator boot. CI design rule: boot the emulator in a setup step, not per-flow.
+
+### Suppress Maestro telemetry banners in CI
+
+Two env vars keep the log output clean:
+```bash
+export MAESTRO_CLI_NO_ANALYTICS=1
+export MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true
+```
+
+Without these, every `maestro test` invocation prints two informational banners about analytics opt-out and AI analyze opt-in. They don't break anything but they make CI logs noisy.
+
+### v1.3.1 has zero accessibility labels in the Compose tree
+
+Before the Phase 1 testTag pass, Maestro can only target visible text. After Phase 1 lands `Modifier.testTag(...)` + `semantics { testTagsAsResourceId = true }` at the nav root, Maestro can target via `id:plain-home.word-display` etc. — the canonical IDs in `/shared/maestro-test-ids.md`.
+
+If a Maestro flow ever fails with "no element matches", confirm:
+1. The element actually has the testTag the flow expects
+2. `testTagsAsResourceId = true` is set somewhere upstream of that element
+3. The Maestro version is 2.x (older flows may have used the legacy `semantics(properties = ...)` shape that doesn't surface as a resource ID)
