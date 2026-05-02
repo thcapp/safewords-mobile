@@ -142,6 +142,42 @@ jobs:
         shell: bash
         run: xcodegen generate
 
+      - name: Install Maestro CLI
+        shell: bash
+        working-directory: .
+        env:
+          MAESTRO_CLI_NO_ANALYTICS: "1"
+          MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED: "true"
+        run: |
+          # brew install maestro is the supported macOS path. We also re-export
+          # ~/.maestro/bin onto PATH for downstream steps in case Maestro pulls
+          # a fallback installer location.
+          brew install maestro
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          echo "/opt/homebrew/bin" >> "$GITHUB_PATH"
+          echo "MAESTRO_CLI_NO_ANALYTICS=1" >> "$GITHUB_ENV"
+          echo "MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true" >> "$GITHUB_ENV"
+          maestro --version
+
+      - name: Boot iOS simulator (pre-warm for Maestro)
+        shell: bash
+        working-directory: .
+        run: |
+          # Pick the first available iPhone 15 simulator and boot it. The
+          # fastlane :maestro_test lane re-boots if needed but pre-warming
+          # cuts ~30s off the first flow run when the device is cold.
+          udid=$(xcrun simctl list devices available --json \
+            | python3 -c "import json,sys; data=json.load(sys.stdin); \
+print(next((d['udid'] for runtime,devs in data['devices'].items() \
+for d in devs if d['name']=='iPhone 15'), ''))")
+          if [[ -z "$udid" ]]; then
+            echo "::warning ::No 'iPhone 15' simulator found; lane will surface the error"
+            exit 0
+          fi
+          echo "Booting $udid"
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b || true
+
       - name: Run fastlane
         shell: bash
         run: |
