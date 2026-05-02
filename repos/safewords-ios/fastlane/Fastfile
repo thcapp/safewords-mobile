@@ -628,6 +628,62 @@ platform :ios do
     UI.success("All 4 phase-1 Maestro flows passed on iOS simulator")
   end
 
+  # Device matrix for the App Store screenshot mandate. Each tuple is:
+  # [simulator_device_name, output_subdir_under_screenshots/en-US, label].
+  #
+  # All four sim device types ship by default with the macos-latest runner's
+  # bundled iOS 18+ runtimes. iPhone SE 3rd gen covers Apple's legacy 5.5"
+  # slot (still required for new submissions). iPad Pro 12.9" is included
+  # by default; the project ships a Universal target so iPad is in scope.
+  SCREENSHOT_MATRIX = [
+    ["iPhone 15 Pro Max",                   "iPhone67",   "6.7\" (iPhone 15 Pro Max)"],
+    ["iPhone 15 Plus",                      "iPhone65",   "6.5\" (iPhone 15 Plus)"],
+    ["iPhone SE (3rd generation)",          "iPhone55",   "5.5\" (iPhone SE 3rd gen)"],
+    ["iPad Pro (12.9-inch) (6th generation)", "iPadPro129", "12.9\" (iPad Pro)"]
+  ].freeze
+
+  # Boot a named simulator and return its UDID. Reuses the booted device if
+  # one is already up, falls back to creating a fresh one if the name doesn't
+  # exist on this runner. 90s cap on bootstatus so a hung sim doesn't burn
+  # the whole CI budget.
+  def _boot_named_sim!(device_name)
+    list_json = `xcrun simctl list devices available --json 2>/dev/null`
+    parsed = JSON.parse(list_json) rescue { "devices" => {} }
+    match = nil
+    (parsed["devices"] || {}).each do |runtime, devs|
+      next unless runtime.include?("iOS")
+      devs.each do |d|
+        if d["name"] == device_name
+          match = d
+          break
+        end
+      end
+      break if match
+    end
+
+    if match.nil?
+      # Try to create the device against the highest available iOS runtime.
+      runtimes = (parsed["devices"] || {}).keys.select { |r| r.include?("iOS") }.sort
+      UI.user_error!("Simulator '#{device_name}' not available and no iOS runtime found on host") if runtimes.empty?
+      runtime = runtimes.last
+      device_types_json = `xcrun simctl list devicetypes --json 2>/dev/null`
+      types = JSON.parse(device_types_json)["devicetypes"] rescue []
+      type = types.find { |t| t["name"] == device_name }
+      UI.user_error!("No simctl device type matches '#{device_name}'") unless type
+      udid = sh("xcrun simctl create #{Shellwords.escape(device_name)} #{Shellwords.escape(type["identifier"])} #{Shellwords.escape(runtime)}").strip
+      sh("xcrun simctl boot #{udid}")
+      sh("timeout 90 xcrun simctl bootstatus #{udid} -b")
+      return udid
+    end
+
+    udid = match["udid"]
+    if match["state"] != "Booted"
+      sh("xcrun simctl boot #{udid}")
+      sh("timeout 90 xcrun simctl bootstatus #{udid} -b")
+    end
+    udid
+  end
+
   desc "Capture fresh App Store screenshots via Maestro and stage them under fastlane/screenshots/"
   lane :screenshots_maestro do
     ensure_xcodegen_project!
@@ -672,6 +728,103 @@ platform :ios do
       UI.message("staged #{File.basename(target)}")
     end
     UI.success("Captured #{captures.size} fresh screenshots into #{dest}")
+  end
+
+  desc "Capture App Store screenshots across the 6.7\"/6.5\"/5.5\"/12.9\" device matrix"
+  lane :screenshots_matrix do
+    ensure_xcodegen_project!
+
+    # Build the .app once against an iPhone simulator destination — the same
+    # binary runs on every iPhone/iPad simulator since it's a Universal build.
+    derived = File.join(IOS_ROOT, "build/maestro-derived")
+    sh("rm -rf #{Shellwords.escape(derived)}")
+
+    sh("xcrun simctl shutdown all || true")
+
+    # Boot the first device once, reusing :maestro_test's flow, so the build
+    # destination is populated with real artifacts before the matrix loop.
+    first_device = SCREENSHOT_MATRIX.first[0]
+    first_udid = _boot_named_sim!(first_device)
+
+    sh(
+      "xcodebuild -project #{Shellwords.escape(PROJECT_PATH)} " \
+      "-scheme #{Shellwords.escape(SCHEME)} " \
+      "-configuration Debug " \
+      "-destination 'platform=iOS Simulator,id=#{first_udid}' " \
+      "-derivedDataPath #{Shellwords.escape(derived)} " \
+      "CODE_SIGNING_ALLOWED=NO " \
+      "build"
+    )
+    app_path = File.join(derived, "Build/Products/Debug-iphonesimulator/Safewords.app")
+    UI.user_error!("Sim build did not produce #{app_path}") unless File.directory?(app_path)
+
+    total = 0
+    failed = []
+    SCREENSHOT_MATRIX.each_with_index do |(device_name, subdir, label), idx|
+      UI.message("=" * 70)
+      UI.message("[#{idx + 1}/#{SCREENSHOT_MATRIX.size}] Capturing on #{label}")
+      UI.message("=" * 70)
+
+      udid =
+        if idx.zero?
+          first_udid
+        else
+          sh("xcrun simctl shutdown all || true")
+          _boot_named_sim!(device_name)
+        end
+
+      sh("xcrun simctl install #{udid} #{Shellwords.escape(app_path)}")
+
+      sh("rm -rf #{Shellwords.escape(MAESTRO_SCREENSHOTS_DIR)}")
+      sh("mkdir -p #{Shellwords.escape(MAESTRO_SCREENSHOTS_DIR)}")
+
+      flow_path = "screenshots.yaml"
+      full = File.join(MAESTRO_FLOWS_DIR, flow_path)
+      UI.user_error!("Maestro flow not found: #{full}") unless File.exist?(full)
+
+      # Per-device tolerance — see the Android :screenshots_matrix lane for
+      # the reasoning. Tablet/non-iPhone layouts can leave a tap target off
+      # the screen edge; we capture whatever Maestro got and keep the matrix
+      # going rather than aborting the whole run.
+      flow_failed = false
+      begin
+        sh("bash -c '#{_maestro_path_prefix} cd #{Shellwords.escape(MAESTRO_FLOWS_DIR)} && maestro --device #{Shellwords.escape(udid)} test #{Shellwords.escape(flow_path)}'")
+      rescue => e
+        flow_failed = true
+        UI.important("  Maestro flow errored on #{label}: #{e.message.lines.first&.strip}")
+      end
+
+      dest = File.join(SCREENSHOTS_PATH, "en-US", subdir)
+      sh("rm -f #{Shellwords.escape(dest)}/*.png")
+      sh("mkdir -p #{Shellwords.escape(dest)}")
+
+      captures = Dir.glob(File.join(MAESTRO_SCREENSHOTS_DIR, "*.png")).sort
+      if captures.empty?
+        failed << "#{label} (no PNGs captured)"
+        UI.error("  Maestro produced no PNGs for #{label}; skipping")
+        next
+      end
+      captures.each_with_index do |src, i|
+        base = File.basename(src, ".png").sub(/^\d+[-_]?/, "")
+        target = File.join(dest, format("%02d_%s.png", i + 1, base))
+        FileUtils.cp(src, target)
+        UI.message("  staged #{File.basename(target)}")
+      end
+      total += captures.size
+      if flow_failed
+        failed << "#{label} (partial: #{captures.size}/6)"
+        UI.important("  #{label}: #{captures.size}/6 PNGs (partial) → #{dest}")
+      else
+        UI.success("  #{label}: #{captures.size} PNGs → #{dest}")
+      end
+    end
+
+    sh("xcrun simctl shutdown all || true")
+    if failed.any?
+      UI.important("screenshots_matrix produced #{total} PNGs across #{SCREENSHOT_MATRIX.size} device classes; failures on: #{failed.join('; ')}")
+    else
+      UI.success("screenshots_matrix produced #{total} PNGs across #{SCREENSHOT_MATRIX.size} device classes")
+    end
   end
 
 end

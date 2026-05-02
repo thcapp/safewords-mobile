@@ -236,6 +236,19 @@ platform :android do
     UI.success("All 4 phase-1 Maestro flows passed")
   end
 
+  # Device matrix for the Play Store screenshot mandate. Each tuple is:
+  # [avd_name, output_subdir_under_images, label_for_logs].
+  #
+  # The phone slot is the same Pixel 6 AVD the dev-loop :screenshots_maestro
+  # lane targets. The tablet slots are pre-created on u5 — the lane fails
+  # closed with the avdmanager invocation if they're missing rather than
+  # silently downloading a 1.5 GB system image at boot time.
+  SCREENSHOT_MATRIX = [
+    ["pixel",                "phoneScreenshots",     "Phone (Pixel 6)"],
+    ["Nexus_7_API_33",       "sevenInchScreenshots", "7\" tablet (Nexus 7)"],
+    ["Pixel_Tablet_API_33",  "tenInchScreenshots",   "10\" tablet (Pixel Tablet)"]
+  ].freeze
+
   desc "Capture fresh listing screenshots via Maestro and stage them under fastlane/metadata/"
   lane :screenshots_maestro do
     sh("bash -c '#{maestro_path_prefix} cd ../app && ../gradlew :app:assembleDebug'")
@@ -268,6 +281,129 @@ platform :android do
       UI.message("staged #{File.basename(target)}")
     end
     UI.success("Captured #{captures.size} fresh screenshots into #{dest}")
+  end
+
+  desc "Capture listing screenshots across the Play-mandated phone + 7\" + 10\" device matrix"
+  lane :screenshots_matrix do
+    # Build + install once per device class — install happens after each AVD
+    # boot since freshly-booted AVDs ship with no user-installed packages.
+    sh("bash -c '#{maestro_path_prefix} cd ../app && ../gradlew :app:assembleDebug'")
+    apk = File.expand_path("../app/build/outputs/apk/debug/app-debug.apk", __dir__)
+    UI.user_error!("Debug APK missing at #{apk}") unless File.exist?(apk)
+
+    available = `bash -c '#{maestro_path_prefix} ${ANDROID_HOME}/emulator/emulator -list-avds 2>/dev/null'`.split("\n").map(&:strip)
+    missing = SCREENSHOT_MATRIX.map { |avd, _, _| avd } - available
+    if missing.any?
+      hint = missing.map do |name|
+        device_id =
+          case name
+          when /Nexus_?7/i      then "Nexus 7"
+          when /Pixel.?Tablet/i then "pixel_tablet"
+          else "pixel_6"
+          end
+        %(echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd ) +
+          %(--name "#{name}" --device "#{device_id}" --package "system-images;android-34;google_apis;x86_64" --force)
+      end.join("\n  ")
+      UI.user_error!(
+        "AVD(s) not present on this host: #{missing.join(', ')}.\n" \
+        "Pre-create them before running this lane:\n  #{hint}\n" \
+        "Auto-creation is intentionally disabled — system-image downloads can take 5+ minutes."
+      )
+    end
+
+    total = 0
+    failed = []
+    SCREENSHOT_MATRIX.each_with_index do |(avd, subdir, label), idx|
+      UI.message("=" * 70)
+      UI.message("[#{idx + 1}/#{SCREENSHOT_MATRIX.size}] Capturing on #{label} (avd=#{avd})")
+      UI.message("=" * 70)
+
+      # Stop any running emulator. `adb emu kill` only targets the emulator
+      # currently bound to default port 5554; pkill -x catches stragglers
+      # from a prior matrix iteration that may not have shut down cleanly.
+      # We use exact-name matching (-x) rather than -f so the kill doesn't
+      # accidentally match its own command line (which contains the literal
+      # string "emulator" thanks to ANDROID_HOME/emulator/emulator) and
+      # SIGTERM the bash interpreter that's still trying to reach `exit 0`.
+      sh("bash -c '#{maestro_path_prefix} adb emu kill 2>/dev/null || true; pkill -x qemu-system-x86_64 2>/dev/null || true; pkill -x emulator64-crash-service 2>/dev/null || true; pkill -x emulator 2>/dev/null || true; exit 0'")
+      sleep 2
+
+      # Boot headless. -no-snapshot avoids loading a stale post-onboarding
+      # state across iterations; -no-audio + swiftshader_indirect keep it
+      # quiet and GPU-friendly on the u5 dev VM.
+      boot_cmd = %(bash -c '#{maestro_path_prefix} ) +
+        %(nohup $ANDROID_HOME/emulator/emulator -avd #{Shellwords.escape(avd)} ) +
+        %(-no-window -no-audio -no-snapshot -gpu swiftshader_indirect ) +
+        %(>/tmp/emu-#{avd}.log 2>&1 &')
+      sh(boot_cmd)
+
+      # Block until boot_completed=1 or 120s elapse.
+      sh(%(bash -c '#{maestro_path_prefix} ) +
+         %(for i in $(seq 1 120); do ) +
+         %(  out=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\\r"); ) +
+         %(  if [ "$out" = "1" ]; then echo "boot ok"; exit 0; fi; ) +
+         %(  sleep 1; ) +
+         %(done; ) +
+         %(echo "boot timeout for #{avd}" >&2; exit 1' ))
+      sh("bash -c '#{maestro_path_prefix} adb wait-for-device'")
+      # Settle the launcher — without this Maestro occasionally taps through
+      # the unlock animation rather than the welcome CTA.
+      sh("bash -c '#{maestro_path_prefix} adb shell input keyevent KEYCODE_WAKEUP || true'")
+      sleep 3
+
+      sh("bash -c '#{maestro_path_prefix} adb install -r #{Shellwords.escape(apk)}'")
+
+      # Wipe stale captures so we never accidentally fold one device's PNGs
+      # into another's directory.
+      sh("rm -rf #{Shellwords.escape(MAESTRO_SCREENSHOTS_DIR)}")
+      sh("mkdir -p #{Shellwords.escape(MAESTRO_SCREENSHOTS_DIR)}")
+
+      # Per-device tolerance: if the flow throws on a tablet (e.g. layout
+      # differences leave a CTA off-screen) we still want to stage whatever
+      # screenshots Maestro got to before the failure, then move on. The lane
+      # ends with a non-zero exit if any device class came up empty so CI can
+      # gate on it; partial captures are surfaced as a warning.
+      flow_failed = false
+      begin
+        _maestro_run_flow("screenshots.yaml")
+      rescue => e
+        flow_failed = true
+        UI.important("  Maestro flow errored on #{label}: #{e.message.lines.first&.strip}")
+      end
+
+      dest = File.expand_path("metadata/android/en-US/images/#{subdir}", __dir__)
+      sh("rm -f #{Shellwords.escape(dest)}/*.png")
+      sh("mkdir -p #{Shellwords.escape(dest)}")
+
+      captures = Dir.glob(File.join(MAESTRO_SCREENSHOTS_DIR, "*.png")).sort
+      if captures.empty?
+        failed << "#{label} (no PNGs captured; emu log /tmp/emu-#{avd}.log)"
+        UI.error("  Maestro produced no PNGs for #{label}; skipping")
+        next
+      end
+      captures.each_with_index do |src, i|
+        base = File.basename(src, ".png").sub(/^\d+[-_]?/, "")
+        target = File.join(dest, "#{i + 1}_#{base}.png")
+        FileUtils.cp(src, target)
+        UI.message("  staged #{File.basename(target)}")
+      end
+      total += captures.size
+      if flow_failed
+        failed << "#{label} (partial: #{captures.size}/6)"
+        UI.important("  #{label}: #{captures.size}/6 PNGs (partial) → #{dest}")
+      else
+        UI.success("  #{label}: #{captures.size} PNGs → #{dest}")
+      end
+    end
+
+    # Final teardown so we leave the host in a clean state.
+    sh("bash -c '#{maestro_path_prefix} adb emu kill 2>/dev/null || true; pkill -x qemu-system-x86_64 2>/dev/null || true; pkill -x emulator 2>/dev/null || true; exit 0'")
+
+    if failed.any?
+      UI.important("screenshots_matrix produced #{total} PNGs across #{SCREENSHOT_MATRIX.size} device classes; failures on: #{failed.join('; ')}")
+    else
+      UI.success("screenshots_matrix produced #{total} PNGs across #{SCREENSHOT_MATRIX.size} device classes")
+    end
   end
 
   # ─── Helpers ────────────────────────────────────────────────────

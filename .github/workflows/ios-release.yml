@@ -14,6 +14,7 @@ on:
           - beta
           - metadata
           - release
+          - screenshots_matrix
   push:
     branches:
       - "release/ios-*"
