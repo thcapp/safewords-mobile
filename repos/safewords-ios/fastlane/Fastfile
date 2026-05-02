@@ -672,14 +672,20 @@ platform :ios do
       UI.user_error!("No simctl device type matches '#{device_name}'") unless type
       udid = sh("xcrun simctl create #{Shellwords.escape(device_name)} #{Shellwords.escape(type["identifier"])} #{Shellwords.escape(runtime)}").strip
       sh("xcrun simctl boot #{udid}")
-      sh("timeout 90 xcrun simctl bootstatus #{udid} -b")
+      # 90s cap on bootstatus so a hung simulator doesn't burn the whole
+      # macos-latest runner allocation. macOS doesn't ship GNU `timeout`;
+      # use the perl-based alarm idiom which is universally available.
+      sh("perl -e 'alarm shift @ARGV; exec @ARGV' 90 xcrun simctl bootstatus #{udid} -b")
       return udid
     end
 
     udid = match["udid"]
     if match["state"] != "Booted"
       sh("xcrun simctl boot #{udid}")
-      sh("timeout 90 xcrun simctl bootstatus #{udid} -b")
+      # 90s cap on bootstatus so a hung simulator doesn't burn the whole
+      # macos-latest runner allocation. macOS doesn't ship GNU `timeout`;
+      # use the perl-based alarm idiom which is universally available.
+      sh("perl -e 'alarm shift @ARGV; exec @ARGV' 90 xcrun simctl bootstatus #{udid} -b")
     end
     udid
   end
