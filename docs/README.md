@@ -15,18 +15,18 @@ Native iOS (Swift/SwiftUI) and Android (Kotlin/Compose) apps for rotating TOTP-b
 | 5 | [safewords-mobile.md](safewords-mobile.md) | **Page-by-page reference** — every screen on both platforms, side by side, with technical implementation details. The one-stop tour. |
 | 6 | [safety-cards.md](safety-cards.md) | Cards system: types, sensitivity tiers, copy schema, render pipelines, biometric gating. |
 | 7 | [demo-mode.md](demo-mode.md) | Demo seed, group, lifecycle, cross-platform parity. |
-| 7 | [design-system.md](design-system.md) | Visual design tokens. Ink + A11Y palettes, typography, components, motion. |
-| 8 | [ios-architecture.md](ios-architecture.md) | iOS code reference. Every file, every screen, routing, widget, services, build. |
-| 9 | [android-architecture.md](android-architecture.md) | Android code reference. Module layout, every screen, navigation, Glance widget, services, Gradle. |
-| 10 | [plain-mode.md](plain-mode.md) | Plain Mode — the v1.3 default home. Large-type layout, screen walkthrough, testing notes. |
-| 11 | [totp-algorithm-reference.md](totp-algorithm-reference.md) | Cross-platform TOTP derivation reference. Algorithm, contract, test vectors, pitfalls. |
-| 12 | [totp-word-algorithm.md](totp-word-algorithm.md) | Original algorithm spec (frozen). Source of truth for the v1.0 derivation rules. |
-| 13 | [word-lists.md](word-lists.md) | Frozen 197-adjective + 300-noun v1 lists and how they're embedded. |
-| 14 | [testing.md](testing.md) | **How we test, end-to-end.** Unit + Maestro layers, running flows on `u5` (Android) and the macOS runner (iOS), the test-ID registry, screenshot pipeline, pre-release gates, parity validation, common flow-authoring failures. Read this before adding or running a Maestro flow. |
-| 15 | [release-state.md](release-state.md) | Audit-able snapshot of Play and TestFlight tracks. |
-| 16 | [release-pipeline-gotchas.md](release-pipeline-gotchas.md) | Postmortem of every failure mode we hit setting up Play and TestFlight pipelines (includes the Maestro environment gotchas appendix). |
-| 17 | [design-handoff-log.md](design-handoff-log.md) | Record of design handoffs and deferred work. |
-| 18 | [best-in-class-expansion-proposal.md](best-in-class-expansion-proposal.md) | Codex's original v1.3 expansion proposal (historical, superseded by v1.3-best-in-class-design.md). |
+| 8 | [design-system.md](design-system.md) | Visual design tokens. Ink + A11Y palettes, typography, components, motion. |
+| 9 | [ios-architecture.md](ios-architecture.md) | iOS code reference. Every file, every screen, routing, widget, services, build. |
+| 10 | [android-architecture.md](android-architecture.md) | Android code reference. Module layout, every screen, navigation, Glance widget, services, Gradle. |
+| 11 | [plain-mode.md](plain-mode.md) | Plain Mode — the v1.3 default home. Large-type layout, screen walkthrough, testing notes. |
+| 12 | [totp-algorithm-reference.md](totp-algorithm-reference.md) | Cross-platform TOTP derivation reference. Algorithm, contract, test vectors, pitfalls. |
+| 13 | [totp-word-algorithm.md](totp-word-algorithm.md) | Original algorithm spec (frozen). Source of truth for the v1.0 derivation rules. |
+| 14 | [word-lists.md](word-lists.md) | Frozen 197-adjective + 300-noun v1 lists and how they're embedded. |
+| 15 | [testing.md](testing.md) | **How we test, end-to-end.** Unit + Maestro layers, running flows on `u5` (Android) and the macOS runner (iOS), the test-ID registry, screenshot pipeline, pre-release gates, parity validation, common flow-authoring failures. Read this before adding or running a Maestro flow. |
+| 16 | [release-state.md](release-state.md) | Audit-able snapshot of Play and TestFlight tracks. |
+| 17 | [release-pipeline-gotchas.md](release-pipeline-gotchas.md) | Postmortem of every failure mode we hit setting up Play and TestFlight pipelines (includes the Maestro environment gotchas appendix). |
+| 18 | [design-handoff-log.md](design-handoff-log.md) | Record of design handoffs and deferred work. |
+| 19 | [best-in-class-expansion-proposal.md](best-in-class-expansion-proposal.md) | Codex's original v1.3 expansion proposal (historical, superseded by v1.3-best-in-class-design.md). |
 
 ## By role
 
