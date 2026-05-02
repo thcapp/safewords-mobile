@@ -22,10 +22,11 @@ Native iOS (Swift/SwiftUI) and Android (Kotlin/Compose) apps for rotating TOTP-b
 | 11 | [totp-algorithm-reference.md](totp-algorithm-reference.md) | Cross-platform TOTP derivation reference. Algorithm, contract, test vectors, pitfalls. |
 | 12 | [totp-word-algorithm.md](totp-word-algorithm.md) | Original algorithm spec (frozen). Source of truth for the v1.0 derivation rules. |
 | 13 | [word-lists.md](word-lists.md) | Frozen 197-adjective + 300-noun v1 lists and how they're embedded. |
-| 14 | [release-state.md](release-state.md) | Audit-able snapshot of Play and TestFlight tracks. |
-| 15 | [release-pipeline-gotchas.md](release-pipeline-gotchas.md) | Postmortem of every failure mode we hit setting up Play and TestFlight pipelines. |
-| 16 | [design-handoff-log.md](design-handoff-log.md) | Record of design handoffs and deferred work. |
-| 17 | [best-in-class-expansion-proposal.md](best-in-class-expansion-proposal.md) | Codex's original v1.3 expansion proposal (historical, superseded by v1.3-best-in-class-design.md). |
+| 14 | [testing.md](testing.md) | **How we test, end-to-end.** Unit + Maestro layers, running flows on `u5` (Android) and the macOS runner (iOS), the test-ID registry, screenshot pipeline, pre-release gates, parity validation, common flow-authoring failures. Read this before adding or running a Maestro flow. |
+| 15 | [release-state.md](release-state.md) | Audit-able snapshot of Play and TestFlight tracks. |
+| 16 | [release-pipeline-gotchas.md](release-pipeline-gotchas.md) | Postmortem of every failure mode we hit setting up Play and TestFlight pipelines (includes the Maestro environment gotchas appendix). |
+| 17 | [design-handoff-log.md](design-handoff-log.md) | Record of design handoffs and deferred work. |
+| 18 | [best-in-class-expansion-proposal.md](best-in-class-expansion-proposal.md) | Codex's original v1.3 expansion proposal (historical, superseded by v1.3-best-in-class-design.md). |
 
 ## By role
 
@@ -35,7 +36,9 @@ Native iOS (Swift/SwiftUI) and Android (Kotlin/Compose) apps for rotating TOTP-b
 
 **Security / crypto reviewer** → `totp-algorithm-reference.md` → `totp-word-algorithm.md` → `v1.3-architecture.md` (primitive derivations section) → `../shared/recovery-schema.md` → `word-lists.md`.
 
-**Release / ops** → `release-state.md` → `release-pipeline-gotchas.md` → `developer-guide.md` (build commands).
+**Release / ops** → `release-state.md` → `release-pipeline-gotchas.md` → `testing.md` → `developer-guide.md` (build commands).
+
+**Adding or debugging a Maestro flow** → `testing.md` → `../shared/maestro-test-ids.md` → `release-pipeline-gotchas.md` (Maestro section).
 
 **Picking up deferred work** → `design-handoff-log.md` → `feature-spec.md` "Deferred / future" → relevant architecture doc.
 
