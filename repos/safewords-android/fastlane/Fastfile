@@ -1,5 +1,8 @@
 default_platform(:android)
 
+require "fileutils"
+require "shellwords"
+
 # ───────────────────────────────────────────────────────────────────
 # Safewords release pipeline
 #
@@ -20,6 +23,34 @@ default_platform(:android)
 OUTPUT_DIR = File.expand_path("../../../output/play-store/v2", __dir__)
 AAB_PATH = "#{OUTPUT_DIR}/app-release.aab"
 
+# Maestro flow runner — see docs/release-pipeline-gotchas.md (Maestro section).
+# u5 (and any non-interactive ssh shell) doesn't have ~/.maestro/bin or
+# ~/android-sdk/platform-tools on PATH; the Maestro installer only edits
+# ~/.bashrc and ~/.zshrc. Export PATH explicitly inside the shell string we
+# hand to fastlane's `sh` action so the gradle/adb/maestro lookups all resolve.
+MAESTRO_FLOWS_DIR = File.expand_path("../../../maestro/flows", __dir__)
+MAESTRO_SCREENSHOTS_DIR = File.expand_path("../../../maestro/screenshots", __dir__)
+
+def maestro_path_prefix
+  # Prepend instead of append so an explicitly-installed maestro/adb wins
+  # over any system version. ANDROID_HOME is needed by adb's protocol probe.
+  %(export PATH="$HOME/.maestro/bin:$HOME/android-sdk/platform-tools:$PATH"; ) +
+    %(export ANDROID_HOME="${ANDROID_HOME:-$HOME/android-sdk}"; ) +
+    %(export MAESTRO_CLI_NO_ANALYTICS=1; ) +
+    %(export MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true; )
+end
+
+# Run a single Maestro flow against the connected emulator. The flow path is
+# resolved relative to maestro/flows/. Fastlane's sh action raises on any
+# non-zero exit; that's the fail-closed contract the smoke gate relies on.
+# Named with a leading underscore so it doesn't collide with the :maestro_test
+# lane (fastlane resolves bare names against the lane registry).
+def _maestro_run_flow(flow_path)
+  full = File.join(MAESTRO_FLOWS_DIR, flow_path)
+  UI.user_error!("Maestro flow not found: #{full}") unless File.exist?(full)
+  sh("bash -c '#{maestro_path_prefix} cd #{Shellwords.escape(MAESTRO_FLOWS_DIR)} && maestro test #{Shellwords.escape(flow_path)}'")
+end
+
 # Read keystore creds from ~/keystores/safewords-release.password on the build
 # host. Don't put them in version control.
 #
@@ -37,8 +68,6 @@ def keystore_env
     "SAFEWORDS_KEY_PASSWORD"      => ENV["SAFEWORDS_KEY_PASSWORD"] || `cat #{ENV['HOME']}/keystores/safewords-release.password 2>/dev/null`.strip,
   }
 end
-
-require "shellwords"
 
 platform :android do
 
@@ -71,6 +100,10 @@ platform :android do
 
   desc "Build + push to internal testing track (bundles AAB + metadata + listing assets)"
   lane :internal do
+    # Smoke gate. Fails closed before any AAB upload — if the four phase-1
+    # Maestro flows don't all pass against a fresh debug APK, we never push
+    # to Play. See docs/maestro-plan.md.
+    maestro_test
     build
     upload_to_play_store(
       track: "internal",
@@ -174,6 +207,67 @@ platform :android do
       skip_upload_screenshots: true,
     )
     UI.success("Validation passed — credentials work, AAB accepted by Play API")
+  end
+
+  desc "Run Maestro phase-1 smoke flows against the connected emulator. Fails closed."
+  lane :maestro_test do
+    # Build a fresh debug APK and install it so the Maestro flows target the
+    # current source tree (testTags, accessibility IDs, demo seed, etc).
+    sh("bash -c '#{maestro_path_prefix} cd ../app && ../gradlew :app:assembleDebug'")
+    apk = File.expand_path("../app/build/outputs/apk/debug/app-debug.apk", __dir__)
+    UI.user_error!("Debug APK missing at #{apk}") unless File.exist?(apk)
+    sh("bash -c '#{maestro_path_prefix} adb install -r #{Shellwords.escape(apk)}'")
+
+    # Pre-warm: the AVD may be on the dim/lock screen between runs. Maestro's
+    # launchApp can wake it but the first tap occasionally lands on the lock
+    # gesture rather than the app. Sending KEYCODE_WAKEUP up-front is cheap.
+    sh("bash -c '#{maestro_path_prefix} adb shell input keyevent KEYCODE_WAKEUP || true'")
+
+    %w[
+      onboarding-create.yaml
+      onboarding-restore.yaml
+      onboarding-demo.yaml
+      parity-check.yaml
+    ].each do |flow|
+      UI.message("Maestro flow: #{flow}")
+      _maestro_run_flow(flow)
+    end
+
+    UI.success("All 4 phase-1 Maestro flows passed")
+  end
+
+  desc "Capture fresh listing screenshots via Maestro and stage them under fastlane/metadata/"
+  lane :screenshots_maestro do
+    sh("bash -c '#{maestro_path_prefix} cd ../app && ../gradlew :app:assembleDebug'")
+    apk = File.expand_path("../app/build/outputs/apk/debug/app-debug.apk", __dir__)
+    sh("bash -c '#{maestro_path_prefix} adb install -r #{Shellwords.escape(apk)}'")
+    sh("bash -c '#{maestro_path_prefix} adb shell input keyevent KEYCODE_WAKEUP || true'")
+
+    # Wipe stale captures so a partial run doesn't pick up old PNGs.
+    sh("rm -rf #{Shellwords.escape(MAESTRO_SCREENSHOTS_DIR)}")
+    sh("mkdir -p #{Shellwords.escape(MAESTRO_SCREENSHOTS_DIR)}")
+
+    _maestro_run_flow("screenshots.yaml")
+
+    # Map Maestro captures (named NN-label.png by the flow) into the supply
+    # API's expected layout (fastlane/metadata/.../phoneScreenshots/N_*.png).
+    # screenshots.yaml writes ../screenshots/01-onboarding.png etc; supply
+    # wants 1_*, 2_* etc as the listing order.
+    dest = File.expand_path("metadata/android/en-US/images/phoneScreenshots", __dir__)
+    sh("rm -f #{Shellwords.escape(dest)}/*.png")
+    sh("mkdir -p #{Shellwords.escape(dest)}")
+
+    captures = Dir.glob(File.join(MAESTRO_SCREENSHOTS_DIR, "*.png")).sort
+    if captures.empty?
+      UI.user_error!("Maestro screenshots flow ran but produced no PNGs in #{MAESTRO_SCREENSHOTS_DIR}")
+    end
+    captures.each_with_index do |src, idx|
+      base = File.basename(src, ".png").sub(/^\d+[-_]?/, "")
+      target = File.join(dest, "#{idx + 1}_#{base}.png")
+      FileUtils.cp(src, target)
+      UI.message("staged #{File.basename(target)}")
+    end
+    UI.success("Captured #{captures.size} fresh screenshots into #{dest}")
   end
 
   # ─── Helpers ────────────────────────────────────────────────────

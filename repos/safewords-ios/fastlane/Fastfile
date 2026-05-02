@@ -1,3 +1,4 @@
+require "fileutils"
 require "json"
 require "shellwords"
 require "spaceship"
@@ -22,6 +23,58 @@ METADATA_PATH = File.join(__dir__, "metadata")
 SCREENSHOTS_PATH = File.join(__dir__, "screenshots")
 APP_RATING_CONFIG_PATH = File.join(__dir__, "app_rating_config.json")
 APP_PRIVACY_DETAILS_PATH = File.join(__dir__, "app_privacy_details.json")
+
+# Maestro flows live at the repo root, shared between iOS + Android runs.
+MAESTRO_FLOWS_DIR = File.join(REPO_ROOT, "maestro/flows")
+MAESTRO_SCREENSHOTS_DIR = File.join(REPO_ROOT, "maestro/screenshots")
+# iOS Maestro target — set when boot succeeds.
+MAESTRO_IOS_DEVICE = "iPhone 15"
+
+def _maestro_path_prefix
+  # The macos-latest runner has Xcode + simctl on the default PATH but Maestro
+  # may not be installed yet (CI installs it via brew before the lane runs);
+  # local Mac users typically install via the curl|bash script that drops
+  # ~/.maestro/bin. Cover both. MAESTRO_CLI_* envs suppress the analytics
+  # banners that pollute CI logs.
+  %(export PATH="$HOME/.maestro/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"; ) +
+    %(export MAESTRO_CLI_NO_ANALYTICS=1; ) +
+    %(export MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true; )
+end
+
+def _maestro_run_flow(flow_path)
+  full = File.join(MAESTRO_FLOWS_DIR, flow_path)
+  UI.user_error!("Maestro flow not found: #{full}") unless File.exist?(full)
+  sh("bash -c '#{_maestro_path_prefix} cd #{Shellwords.escape(MAESTRO_FLOWS_DIR)} && maestro test #{Shellwords.escape(flow_path)}'")
+end
+
+# Boot the iPhone simulator if it isn't already, install the latest debug
+# build, return the booted UDID. The macos-latest runner ships every recent
+# iOS Simulator runtime; we let `xcrun simctl` pick the first matching device
+# by name from `simctl list devices available`.
+def _maestro_boot_ios_simulator!
+  device = MAESTRO_IOS_DEVICE
+  list_json = `xcrun simctl list devices available --json 2>/dev/null`
+  parsed = JSON.parse(list_json) rescue { "devices" => {} }
+  match = nil
+  (parsed["devices"] || {}).each do |_runtime, devs|
+    devs.each do |d|
+      if d["name"] == device
+        match = d
+        break
+      end
+    end
+    break if match
+  end
+  UI.user_error!("No '#{device}' simulator available on this runner") unless match
+
+  if match["state"] != "Booted"
+    sh("xcrun simctl boot '#{match["udid"]}'")
+    # simctl returns immediately after issuing the boot; SpringBoard isn't
+    # ready for a few seconds. bootstatus blocks until the device is usable.
+    sh("xcrun simctl bootstatus '#{match["udid"]}' -b")
+  end
+  match["udid"]
+end
 
 def local_credentials
   @local_credentials ||= begin
@@ -294,6 +347,10 @@ platform :ios do
 
   desc "Build + upload to TestFlight"
   lane :beta do
+    # Smoke gate. Fails closed before any IPA upload — if the phase-1 Maestro
+    # flows don't all pass against a fresh debug build on the simulator, we
+    # never push to TestFlight. See docs/maestro-plan.md.
+    maestro_test
     build
     # Bypass app_store_connect_api_key action — its Spaceship token init
     # hits OpenSSL::PKey::ECError "invalid curve name" on macos-arm64 runners
@@ -530,6 +587,91 @@ platform :ios do
         puts "  capability: #{cap.capability_type} settings=#{cap.settings.inspect}"
       end
     end
+  end
+
+  desc "Run Maestro phase-1 smoke flows against a freshly-booted iOS simulator. Fails closed."
+  lane :maestro_test do
+    ensure_xcodegen_project!
+    udid = _maestro_boot_ios_simulator!
+    UI.message("Maestro target simulator: #{MAESTRO_IOS_DEVICE} (#{udid})")
+
+    # Build a debug .app for the simulator and install it onto the booted
+    # device. We use xcodebuild directly rather than gym/build_app — gym
+    # produces an .ipa for device, not a .app for the simulator. The
+    # ${DERIVED_DATA}/Build/Products/Debug-iphonesimulator/Safewords.app
+    # path is the canonical location.
+    derived = File.join(IOS_ROOT, "build/maestro-derived")
+    sh("rm -rf #{Shellwords.escape(derived)}")
+    sh(
+      "xcodebuild -project #{Shellwords.escape(PROJECT_PATH)} " \
+      "-scheme #{Shellwords.escape(SCHEME)} " \
+      "-configuration Debug " \
+      "-destination 'platform=iOS Simulator,id=#{udid}' " \
+      "-derivedDataPath #{Shellwords.escape(derived)} " \
+      "CODE_SIGNING_ALLOWED=NO " \
+      "build"
+    )
+    app_path = File.join(derived, "Build/Products/Debug-iphonesimulator/Safewords.app")
+    UI.user_error!("Sim build did not produce #{app_path}") unless File.directory?(app_path)
+    sh("xcrun simctl install #{udid} #{Shellwords.escape(app_path)}")
+
+    %w[
+      onboarding-create.yaml
+      onboarding-restore.yaml
+      onboarding-demo.yaml
+      parity-check.yaml
+    ].each do |flow|
+      UI.message("Maestro flow: #{flow}")
+      _maestro_run_flow(flow)
+    end
+
+    UI.success("All 4 phase-1 Maestro flows passed on iOS simulator")
+  end
+
+  desc "Capture fresh App Store screenshots via Maestro and stage them under fastlane/screenshots/"
+  lane :screenshots_maestro do
+    ensure_xcodegen_project!
+    udid = _maestro_boot_ios_simulator!
+
+    derived = File.join(IOS_ROOT, "build/maestro-derived")
+    sh("rm -rf #{Shellwords.escape(derived)}")
+    sh(
+      "xcodebuild -project #{Shellwords.escape(PROJECT_PATH)} " \
+      "-scheme #{Shellwords.escape(SCHEME)} " \
+      "-configuration Debug " \
+      "-destination 'platform=iOS Simulator,id=#{udid}' " \
+      "-derivedDataPath #{Shellwords.escape(derived)} " \
+      "CODE_SIGNING_ALLOWED=NO " \
+      "build"
+    )
+    app_path = File.join(derived, "Build/Products/Debug-iphonesimulator/Safewords.app")
+    sh("xcrun simctl install #{udid} #{Shellwords.escape(app_path)}")
+
+    sh("rm -rf #{Shellwords.escape(MAESTRO_SCREENSHOTS_DIR)}")
+    sh("mkdir -p #{Shellwords.escape(MAESTRO_SCREENSHOTS_DIR)}")
+
+    _maestro_run_flow("screenshots.yaml")
+
+    # Stage into the App Store Connect screenshots layout.
+    # `fastlane deliver` expects fastlane/screenshots/<lang>/<DEVICE>_NN.png.
+    # Default device is the iPhone 6.7-Display class — App Store accepts
+    # one set per family. We deposit into en-US/ and let upload_to_app_store
+    # pick them up.
+    dest = File.join(SCREENSHOTS_PATH, "en-US")
+    sh("rm -f #{Shellwords.escape(dest)}/*.png")
+    sh("mkdir -p #{Shellwords.escape(dest)}")
+
+    captures = Dir.glob(File.join(MAESTRO_SCREENSHOTS_DIR, "*.png")).sort
+    if captures.empty?
+      UI.user_error!("Maestro screenshots flow ran but produced no PNGs in #{MAESTRO_SCREENSHOTS_DIR}")
+    end
+    captures.each_with_index do |src, idx|
+      base = File.basename(src, ".png").sub(/^\d+[-_]?/, "")
+      target = File.join(dest, format("%02d_%s.png", idx + 1, base))
+      FileUtils.cp(src, target)
+      UI.message("staged #{File.basename(target)}")
+    end
+    UI.success("Captured #{captures.size} fresh screenshots into #{dest}")
   end
 
 end
