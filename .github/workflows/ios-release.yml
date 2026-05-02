@@ -150,14 +150,18 @@ jobs:
           MAESTRO_CLI_NO_ANALYTICS: "1"
           MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED: "true"
         run: |
-          # brew install maestro is the supported macOS path. We also re-export
-          # ~/.maestro/bin onto PATH for downstream steps in case Maestro pulls
-          # a fallback installer location.
-          brew install maestro
+          # Prefer the official curl|bash installer over the brew cask. The
+          # cask checksum lags Maestro releases and intermittently fails the
+          # runner with a SHA mismatch (observed 2026-05-02). The installer
+          # script always pulls the latest tarball from get.maestro.mobile.dev
+          # and drops the binaries under ~/.maestro/bin, which we re-add to
+          # PATH for downstream steps.
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
           echo "/opt/homebrew/bin" >> "$GITHUB_PATH"
           echo "MAESTRO_CLI_NO_ANALYTICS=1" >> "$GITHUB_ENV"
           echo "MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true" >> "$GITHUB_ENV"
+          export PATH="$HOME/.maestro/bin:$PATH"
           maestro --version
 
       - name: Boot iOS simulator (pre-warm for Maestro)
