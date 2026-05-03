@@ -621,11 +621,13 @@ struct PlainOnboardingView: View {
                         if step < panels.count - 1 { step += 1 }
                         else { onboarded = true }
                     }
+                    .accessibilityIdentifier(step < panels.count - 1 ? "plain-onboarding.cta-next" : "plain-onboarding.cta-done")
                     if step > 0 {
                         Button("Back") { step -= 1 }
                             .font(A11yFonts.body(18, weight: .semibold))
                             .foregroundStyle(A11Y.fgMuted)
                             .padding(14)
+                            .accessibilityIdentifier("plain-onboarding.back")
                     }
                 }
             }
